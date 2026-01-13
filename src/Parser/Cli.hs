@@ -75,7 +75,8 @@ cmdHead = NonEmpty.head . cmdNames
 
 -- | Parsers for top-level CLI arguments such as commands and options.
 data CliParser r
-  = CliParameter (TextParser r)
+  = CliHelp (NonEmpty Flag)
+  | CliParameter (TextParser r)
   | CliOption OptionInfo (ParseTree SubParser r)
   | CliCommand CommandInfo (ParseTree CliParser r)
   deriving (Functor)
@@ -84,6 +85,7 @@ instance Render (CliParser r) where
   render = renderParser
 
 instance HasValency CliParser where
+  valency (CliHelp _) = Just 1
   valency (CliParameter _) = Just 1
   valency (CliOption _ subtree) = case valency subtree of
                                     Just n | n <= 0 -> Just 1
@@ -97,6 +99,8 @@ instance Resolve CliParser where
     throwError $ ExpectedError [render (optHead info)]
   resolve (CliCommand info _) =
     throwError $ ExpectedError [render (cmdHead info)]
+  resolve (CliHelp flags) =
+    throwError $ ExpectedError [render (NonEmpty.head flags)]
 
 instance Parser CliParser where
   data Token CliParser
@@ -129,6 +133,7 @@ instance Parser CliParser where
   sepProd _ = " "
   sepSum _ = " | "
 
+  renderParser (CliHelp flags) = render $ NonEmpty.head flags
   renderParser (CliParameter tp) = render $ parserHint tp
   renderParser (CliOption info subtree) =
     let rep = optHead info
@@ -142,6 +147,13 @@ instance Parser CliParser where
   renderParser (CliCommand info subtree) = "{" <> render (cmdHead info) <> " "
                                            <> render subtree <> "}"
 
+  feedParser (CliHelp flags) = do
+    peek >>= \case
+      LongOption  s -> guard $ LongFlag  s `elem` flags
+      ShortOption c -> guard $ ShortFlag c `elem` flags
+      _ -> empty
+    pop_
+    requestHelp
   feedParser (CliParameter tp) = do
     text <- peek >>= \case
       Argument s -> pure s
