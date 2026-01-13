@@ -13,6 +13,7 @@ module Parser.Cli
   , Token(..)
   , optHead
   , cmdHead
+  , addHelpOptions
   ) where
 
 import           Control.Applicative
@@ -211,3 +212,17 @@ instance Parser CliParser where
     withContext (render next <> " command") $
       satiate subtree
       >>= resolveLifted
+
+addHelpOptions :: NonEmpty Flag -> ParseTree CliParser r -> ParseTree CliParser r
+addHelpOptions flags tree = addHelp $ go tree
+  where
+    addHelp :: ParseTree CliParser a -> ParseTree CliParser a
+    addHelp _tree = ParseNode (CliHelp flags) <|> _tree
+
+    go :: ParseTree CliParser a -> ParseTree CliParser a
+    go (ParseNode (CliCommand info subtree)) =
+      ParseNode $ CliCommand info $ addHelp $ go subtree
+    go (ProdNode f l r) = ProdNode f (go l) (go r)
+    go (SumNode l r) = SumNode (go l) (go r)
+    go (ManyNode require p) = ManyNode require (go p)
+    go node = node
