@@ -17,6 +17,7 @@ with error handling and context management.
 module Stream
   ( -- * Types
     StreamParser(..)
+  , requestHelp
 
     -- * Context
   , withContext
@@ -86,6 +87,9 @@ instance MonadError Builder (StreamParser tok) where
     (\err -> runStreamParser (handler err) cok cempty cerr chelp ts)
     chelp
     ts
+
+requestHelp :: StreamParser tok a
+requestHelp = StreamParser $ \_ _ _ chelp _ -> chelp []
 
 --------------------------------------------------------------------------------
 
