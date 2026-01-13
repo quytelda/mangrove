@@ -20,6 +20,7 @@ import           Data.Proxy
 import           Data.Text            (Text)
 
 import           Parser
+import           Result
 import           Stream
 import           Text
 
@@ -134,24 +135,24 @@ runParseTree
   :: Parser p
   => ParseTree p r
   -> [Token p]
-  -> Either Builder (r, [Token p])
+  -> Result Builder (r, [Token p])
 runParseTree tree =
   runStreamParser (satiate tree)
   (\tree' leftovers ->
      case resolve tree' of
-       Right value -> Right (value, leftovers)
+       Right value -> pure (value, leftovers)
        Left err ->
          case leftovers of
-           (token:_) -> Left $ "unexpected " <> render token
-           _         -> Left $ render err
+           (token:_) -> throwError $ "unexpected " <> render token
+           _         -> throwError $ render err
   )
-  (Left . const "empty")
-  Left
-  (undefined)
+  (throwError . const "empty")
+  throwError
+  (\_ -> HelpRequest)
 
 parseArguments
   :: Parser p
   => ParseTree p r
   -> [Text]
-  -> Either Builder (r, [Token p])
+  -> Result Builder (r, [Token p])
 parseArguments tree = runParseTree tree . parseTokens

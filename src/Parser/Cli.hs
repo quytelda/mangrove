@@ -31,6 +31,7 @@ import           Parser
 import           Parser.Sub
 import           Parser.Text
 import           ParseTree
+import           Result
 import           Stream
 import           Text
 
@@ -170,7 +171,10 @@ instance Parser CliParser where
         _                 -> []
 
       -- Evaluate the subparser in a new stream context.
-      (result, leftovers) <- liftEither $ parseArguments subtree args
+      (result, leftovers) <- case parseArguments subtree args of
+                               Success value -> pure value
+                               Failure err   -> throwError err
+                               HelpRequest   -> requestHelp
 
       -- If the subparser consumed its input, we can safely remove it
       -- the from the parent stream. However, we cannot remove partially
