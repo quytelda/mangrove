@@ -91,6 +91,27 @@ optionSpec = do
         parseArguments opt_example_param_optional ["--example", "qwer"]
           `shouldBe` Success ("qwer", [])
 
+  describe "help options" $ do
+    context "when a help option is present" $ do
+      it "requests help" $ do
+        parseArguments (addHelpOptions ["--help"] opt_example_unit) ["--help"]
+          `shouldBe` HelpRequest
+      it "works for subcommands" $ do
+        parseArguments (addHelpOptions ["--help"] cmd_example_tree) ["example", "--help"]
+          `shouldBe` HelpRequest
+        parseArguments (addHelpOptions ["--help"] cmd_example_tree) ["example", "asdf", "--help"]
+          `shouldBe` HelpRequest
+
+    context "when a help option is absent" $ do
+      it "doesn't request help" $ do
+        parseArguments (addHelpOptions ["--help"] opt_example_unit) ["--example"]
+          `shouldBe` Success ((), [])
+        parseArguments (addHelpOptions ["--help"] opt_example_unit) []
+          `shouldBe` Failure "expected: --help or --example"
+      it "isn't activated by escaped options" $ do
+        parseArguments (addHelpOptions ["--help"] opt_example_unit) ["--", "--help"]
+          `shouldBe` Failure "unexpected --help"
+
 generalSpec :: Spec
 generalSpec = do
   context "when \"-\" is given as an argument" $ do

@@ -44,5 +44,8 @@ option_asdf = option ["--asdf", "-a"] "" $ pure "qwer"
 command_asdf :: ParseTree CliParser Text
 command_asdf = command ["asdf"] "" $ pure "qwer"
 
+cmd_example_tree :: ParseTree CliParser Text
+cmd_example_tree = command ["example"] "" $ command ["asdf"] "" $ pure "qwer"
+
 testParser :: (Eq r, Show r) => ParseTree CliParser r -> [Text] -> r -> Expectation
 testParser tree args expect = parseArguments tree args `shouldBe` Success (expect, [])
