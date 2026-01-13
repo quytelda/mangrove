@@ -32,6 +32,7 @@ module Stream
 
 import           Control.Applicative
 import           Control.Monad.Except
+import           Data.Text              (Text)
 import           Data.Text.Lazy.Builder (Builder)
 
 -- | The amazing stream parsing monad! This monad is comparable to a
@@ -43,6 +44,7 @@ newtype StreamParser tok a = StreamParser
        (a -> [tok] -> r) -- success continuation
     -> ([tok] -> r) -- empty continuation
     -> (Builder -> r) -- error continuation
+    -> ([Text] -> r) -- help continuation
     -> [tok] -- stream content
     -> r
   }
@@ -52,33 +54,37 @@ instance Functor (StreamParser tok) where
     runStreamParser parser (cok . f)
 
 instance Applicative (StreamParser tok) where
-  pure a = StreamParser $ \cok _ _ -> cok a
-  mf <*> ma = StreamParser $ \cok cempty cerr ->
+  pure a = StreamParser $ \cok _ _ _ -> cok a
+  mf <*> ma = StreamParser $ \cok cempty cerr chelp ->
     runStreamParser mf
-    (\f -> runStreamParser ma (cok . f) cempty cerr)
+    (\f -> runStreamParser ma (cok . f) cempty cerr chelp)
     cempty
     cerr
+    chelp
 
 instance Alternative (StreamParser tok) where
-  empty = StreamParser $ \_ cempty _ -> cempty
-  l <|> r = StreamParser $ \cok cempty cerr ->
+  empty = StreamParser $ \_ cempty _ _ -> cempty
+  l <|> r = StreamParser $ \cok cempty cerr chelp ->
     runStreamParser l cok
-    (runStreamParser r cok cempty cerr)
+    (runStreamParser r cok cempty cerr chelp)
     cerr
+    chelp
 
 instance Monad (StreamParser tok) where
   return = pure
-  ma >>= f = StreamParser $ \cok cempty cerr ->
+  ma >>= f = StreamParser $ \cok cempty cerr chelp ->
     runStreamParser ma
-    (\a -> runStreamParser (f a) cok cempty cerr)
+    (\a -> runStreamParser (f a) cok cempty cerr chelp)
     cempty
     cerr
+    chelp
 
 instance MonadError Builder (StreamParser tok) where
-  throwError err = StreamParser $ \_ _ cerr _ -> cerr err
-  catchError ma handler = StreamParser $ \cok cempty cerr ts ->
+  throwError err = StreamParser $ \_ _ cerr _ _ -> cerr err
+  catchError ma handler = StreamParser $ \cok cempty cerr chelp ts ->
     runStreamParser ma cok cempty
-    (\err -> runStreamParser (handler err) cok cempty cerr ts)
+    (\err -> runStreamParser (handler err) cok cempty cerr chelp ts)
+    chelp
     ts
 
 --------------------------------------------------------------------------------
@@ -96,14 +102,14 @@ withContext context action = StreamParser $ \cok cempty cerr ->
 
 -- | Remove and return the first token in the stream.
 popMaybe :: StreamParser tok (Maybe tok)
-popMaybe = StreamParser $ \cok _ _ ts ->
+popMaybe = StreamParser $ \cok _ _ _ ts ->
   case ts of
     (t:ts') -> cok (Just t) ts'
     _       -> cok Nothing ts
 
 -- | View the first token in the stream without consuming it.
 peekMaybe :: StreamParser tok (Maybe tok)
-peekMaybe = StreamParser $ \cok _ _ ts ->
+peekMaybe = StreamParser $ \cok _ _ _ ts ->
   case ts of
     (t:_) -> cok (Just t) ts
     _     -> cok Nothing ts
@@ -111,7 +117,7 @@ peekMaybe = StreamParser $ \cok _ _ ts ->
 -- | Remove and return the first token in the stream. Evaluates to
 -- 'empty' if there are no tokens in the stream.
 pop :: StreamParser tok tok
-pop = StreamParser $ \cok cempty _ ts ->
+pop = StreamParser $ \cok cempty _ _ ts ->
   case ts of
     (t:ts') -> cok t ts'
     _       -> cempty ts
@@ -119,16 +125,16 @@ pop = StreamParser $ \cok cempty _ ts ->
 -- | View the first token in the stream without consuming it.
 -- Evaluates to 'empty' if there are no tokens in the stream.
 peek :: StreamParser tok tok
-peek = StreamParser $ \cok cempty _ ts ->
+peek = StreamParser $ \cok cempty _ _ ts ->
   case ts of
     (t:_) -> cok t ts
     _     -> cempty ts
 
 -- | Prepend a token to the front of the stream.
 push :: tok -> StreamParser tok ()
-push t = StreamParser $ \cok _ _ -> cok () . (t:)
+push t = StreamParser $ \cok _ _ _ -> cok () . (t:)
 
 -- | Discard the first token in the stream. Nothing happens if there
 -- are no tokens in the stream.
 pop_ :: StreamParser tok ()
-pop_ = StreamParser $ \cok _ _ -> cok () . drop 1
+pop_ = StreamParser $ \cok _ _ _ -> cok () . drop 1
