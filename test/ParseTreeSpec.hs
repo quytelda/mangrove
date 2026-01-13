@@ -10,6 +10,7 @@ import           Test.Hspec
 
 import           Parser.Cli
 import           ParseTree
+import           Result
 
 import           TestParsers
 
@@ -18,61 +19,61 @@ spec = do
   describe "pure" $ do
     it "resolves to the given value" $ do
       parseArguments (ValueNode 'a' :: ParseTree CliParser Char) []
-        `shouldBe` Right ('a', [])
+        `shouldBe` Success ('a', [])
 
   describe "liftA2" $ do
     it "combines two values" $ do
       parseArguments (liftA2 (+) (pure 1) (pure 2) :: ParseTree CliParser Int) []
-        `shouldBe` Right (3, [])
+        `shouldBe` Success (3, [])
 
       -- should be equivalent
       parseArguments ((+) <$> pure 1 <*> pure 2 :: ParseTree CliParser Int) []
-        `shouldBe` Right (3, [])
+        `shouldBe` Success (3, [])
 
   describe "empty" $ do
     it "doesn't resolve to any value" $ do
       parseArguments (empty :: ParseTree CliParser Char) []
-        `shouldBe` Left "empty"
+        `shouldBe` Failure "empty"
 
   describe "(<|>)" $ do
     context "when the left child is resolvable" $ do
       it "resolves as the left child" $ do
         parseArguments (pure "asdf" <|> opt_e_param) []
-          `shouldBe` Right ("asdf", [])
+          `shouldBe` Success ("asdf", [])
 
         -- When the right child is also resolvable, it should be
         -- ignored.
         parseArguments (pure "asdf" <|> pure "qwer" :: ParseTree CliParser Text) []
-          `shouldBe` Right ("asdf", [])
+          `shouldBe` Success ("asdf", [])
 
     context "when the left child is unresolvable" $ do
       it "resolves as the right child" $ do
         parseArguments (opt_e_param <|> pure "asdf") []
-          `shouldBe` Right ("asdf", [])
+          `shouldBe` Success ("asdf", [])
 
     context "when one child is triggered" $ do
       it "prunes the other child" $ do
         parseArguments (opt_e_unit <|> opt_f_unit) ["-e", "-f"]
-          `shouldBe` Right ((), [ShortOption 'f'])
+          `shouldBe` Success ((), [ShortOption 'f'])
         parseArguments (opt_e_unit <|> opt_f_unit) ["-f", "-e"]
-          `shouldBe` Right ((), [ShortOption 'e'])
+          `shouldBe` Success ((), [ShortOption 'e'])
 
   describe "many" $ do
     it "parses multiple instances" $ do
       parseArguments (many opt_e_param) ["-e", "asdf", "-e", "qwer", "-e", "zxcv"]
-        `shouldBe` Right (["asdf", "qwer", "zxcv"], [])
+        `shouldBe` Success (["asdf", "qwer", "zxcv"], [])
     it "parses zero instances" $ do
       parseArguments (many opt_e_param) ["blah"]
-        `shouldBe` Right ([], [Argument "blah"])
+        `shouldBe` Success ([], [Argument "blah"])
 
     it "handles compound trees" $ do
       let tree = (opt_f_unit *> opt_e_param) <|> opt_example_param
       parseArguments (many tree) ["-f", "-e", "asdf", "--example", "qwer"]
-        `shouldBe` Right (["asdf", "qwer"], [])
+        `shouldBe` Success (["asdf", "qwer"], [])
 
     it "doesn't swallow arguments" $ do
       parseArguments (many $ opt_f_unit *> opt_e_param) ["-f", "-e", "asdf", "-f"]
-        `shouldBe` Left "expected: -e"
+        `shouldBe` Failure "expected: -e"
         -- Some attempts at implementing many/some resulted in
         -- arguments being silently swallowed if they were consumed by
         -- a parser inside a ManyNode which didn't receive enough
@@ -84,24 +85,24 @@ spec = do
   describe "some" $ do
     it "parses multiple instances" $ do
       parseArguments (some opt_e_param) ["-e", "asdf", "-e", "qwer", "-e", "zxcv"]
-        `shouldBe` Right (["asdf", "qwer", "zxcv"], [])
+        `shouldBe` Success (["asdf", "qwer", "zxcv"], [])
     it "requires at least one instance" $ do
       parseArguments (some opt_e_param) ["blah"]
-        `shouldBe` Left "unexpected blah"
+        `shouldBe` Failure "unexpected blah"
 
     it "handles compound trees" $ do
       let tree = (opt_f_unit *> opt_e_param) <|> opt_example_param
       parseArguments (some tree) ["-f", "-e", "asdf", "--example", "qwer"]
-        `shouldBe` Right (["asdf", "qwer"], [])
+        `shouldBe` Success (["asdf", "qwer"], [])
 
     it "doesn't swallow arguments" $ do
       parseArguments (some $ opt_f_unit *> opt_e_param) ["-f", "-e", "asdf", "-f"]
-        `shouldBe` Left "expected: -e"
+        `shouldBe` Failure "expected: -e"
 
   describe "optional" $ do
     it "parses exactly one instance" $ do
       parseArguments (optional opt_e_param) ["-e", "asdf", "-e", "qwer", "-e", "zxcv"]
-        `shouldBe` Right ( Just "asdf"
+        `shouldBe` Success ( Just "asdf"
                          , [ ShortOption 'e'
                            , Argument "qwer"
                            , ShortOption 'e'
@@ -110,4 +111,4 @@ spec = do
                          )
     it "parses zero instances" $ do
       parseArguments (optional opt_e_param) ["blah"]
-        `shouldBe` Right (Nothing, [Argument "blah"])
+        `shouldBe` Success (Nothing, [Argument "blah"])

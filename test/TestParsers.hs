@@ -11,6 +11,7 @@ import           Test.Hspec
 import           Argon
 import           Parser.Cli
 import           ParseTree
+import           Result
 
 opt_example_unit :: ParseTree CliParser ()
 opt_example_unit = option [LongFlag "example"] "" $ pure ()
@@ -44,4 +45,4 @@ command_asdf :: ParseTree CliParser Text
 command_asdf = command ["asdf"] "" $ pure "qwer"
 
 testParser :: (Eq r, Show r) => ParseTree CliParser r -> [Text] -> r -> Expectation
-testParser tree args expect = parseArguments tree args `shouldBe` Right (expect, [])
+testParser tree args expect = parseArguments tree args `shouldBe` Success (expect, [])
