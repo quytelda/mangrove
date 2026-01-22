@@ -111,7 +111,7 @@ instance Scheme p => Render (ParseTree p r) where
 feed :: Scheme p => ParseTree p r -> StreamParser (Token p) (ParseTree p r)
 feed EmptyNode = empty
 feed (ValueNode _) = empty
-feed (ParseNode parser) = ValueNode <$> feedParser parser
+feed (ParseNode parser) = ValueNode <$> activate parser
 feed (ProdNode f l r) =
   (ProdNode f <$> feed l <*> pure r) <|>
   (ProdNode f l <$> feed r)

@@ -57,13 +57,13 @@ instance Scheme SubScheme where
   renderParser (SubParameter tp)  = render $ parserHint tp
   renderParser (SubOption key tp) = render key <> "=" <> render (parserHint tp)
 
-  feedParser (SubParameter tp) = do
+  activate (SubParameter tp) = do
     peek >>= \case
       SubArgument s ->
         withContext (render (parserHint tp) <> " subparameter") $
         pop_ *> runTextParser tp s
       _             -> empty
-  feedParser (SubOption key tp) = do
+  activate (SubOption key tp) = do
     peek >>= \case
       SubAssoc k v
         | key == k ->

@@ -148,14 +148,14 @@ instance Scheme CliScheme where
   renderParser (CliCommand info subtree) = "{" <> render (cmdHead info) <> " "
                                            <> render subtree <> "}"
 
-  feedParser (CliHelp flags) = do
+  activate (CliHelp flags) = do
     peek >>= \case
       LongOption  s -> guard $ LongFlag  s `elem` flags
       ShortOption c -> guard $ ShortFlag c `elem` flags
       _ -> empty
     pop_
     requestHelp
-  feedParser (CliParameter tp) = do
+  activate (CliParameter tp) = do
     text <- peek >>= \case
       Argument s -> pure s
       Escaped s  -> pure s
@@ -163,7 +163,7 @@ instance Scheme CliScheme where
 
     withContext (render (parserHint tp) <> " parameter") $
       pop_ *> runTextParser tp text
-  feedParser (CliOption info subtree) = do
+  activate (CliOption info subtree) = do
     next <- peek
     case next of
       LongOption  s -> guard $ LongFlag  s `elem` optFlags info
@@ -202,7 +202,7 @@ instance Scheme CliScheme where
         _ -> pure ()
 
       pure result
-  feedParser (CliCommand info subtree) = do
+  activate (CliCommand info subtree) = do
     next <- peek
     case next of
       Argument s -> guard $ s `elem` cmdNames info

@@ -89,8 +89,12 @@ class (Functor p, Resolve p) => Scheme (p :: Type -> Type) where
   -- | Generate usage information for a 'Scheme' instance.
   renderParser :: p r -> Builder
 
-  -- | Lift this parser into an appropriate 'StreamParser'.
-  feedParser :: p r -> StreamParser (Token p) r
+  -- | Attempt activation of a provided parser with a given input
+  -- stream. The parser either succeeds, fails, or does not apply.
+  --
+  -- Another way to interpret this operation is that it lifts a parser
+  -- scheme into a 'StreamParser'.
+  activate :: p r -> StreamParser (Token p) r
 
 instance Scheme p => Render (Token p) where
   render = renderToken
