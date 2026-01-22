@@ -5,8 +5,8 @@
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE ViewPatterns      #-}
 
-module Parser.Sub
-  ( SubParser(..)
+module Scheme.Sub
+  ( SubScheme(..)
   ) where
 
 import           Control.Applicative
@@ -14,31 +14,31 @@ import           Control.Monad.Except
 import           Data.Text              (Text)
 import qualified Data.Text.Lazy.Builder as TLB
 
-import           Parser
-import           Parser.Text
+import           Scheme
+import           Scheme.Text
 import           Stream
 import           Text
 
 -- | Parsers for subarguments of an option, i.e. '--option key=value'.
-data SubParser r
+data SubScheme r
   = SubParameter (TextParser r)
   | SubOption Text (TextParser r)
   deriving (Functor)
 
-instance HasValency SubParser where
+instance HasValency SubScheme where
   valency _ = Just 1
 
-instance Resolve SubParser where
+instance Resolve SubScheme where
   resolve (SubParameter (TextParser hint _)) =
     throwError $ ExpectedError [TLB.fromText hint]
   resolve (SubOption key (TextParser hint _)) =
     throwError $ ExpectedError [TLB.fromText key <> "=" <> TLB.fromText hint]
 
-instance Render (SubParser r) where
+instance Render (SubScheme r) where
   render = renderParser
 
-instance Parser SubParser where
-  data Token SubParser
+instance Scheme SubScheme where
+  data Token SubScheme
     = SubAssoc Text Text -- ^ A key=value argument
     | SubArgument Text -- ^ A standard argument
     deriving (Eq, Show)

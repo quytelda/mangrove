@@ -8,7 +8,7 @@ import           Control.Applicative
 import           Data.Text           (Text)
 import           Test.Hspec
 
-import           Parser.Cli
+import           Scheme.Cli
 import           ParseTree
 import           Result
 
@@ -18,21 +18,21 @@ spec :: Spec
 spec = do
   describe "pure" $ do
     it "resolves to the given value" $ do
-      parseArguments (ValueNode 'a' :: ParseTree CliParser Char) []
+      parseArguments (ValueNode 'a' :: ParseTree CliScheme Char) []
         `shouldBe` Success ('a', [])
 
   describe "liftA2" $ do
     it "combines two values" $ do
-      parseArguments (liftA2 (+) (pure 1) (pure 2) :: ParseTree CliParser Int) []
+      parseArguments (liftA2 (+) (pure 1) (pure 2) :: ParseTree CliScheme Int) []
         `shouldBe` Success (3, [])
 
       -- should be equivalent
-      parseArguments ((+) <$> pure 1 <*> pure 2 :: ParseTree CliParser Int) []
+      parseArguments ((+) <$> pure 1 <*> pure 2 :: ParseTree CliScheme Int) []
         `shouldBe` Success (3, [])
 
   describe "empty" $ do
     it "doesn't resolve to any value" $ do
-      parseArguments (empty :: ParseTree CliParser Char) []
+      parseArguments (empty :: ParseTree CliScheme Char) []
         `shouldBe` Failure "empty"
 
   describe "(<|>)" $ do
@@ -43,7 +43,7 @@ spec = do
 
         -- When the right child is also resolvable, it should be
         -- ignored.
-        parseArguments (pure "asdf" <|> pure "qwer" :: ParseTree CliParser Text) []
+        parseArguments (pure "asdf" <|> pure "qwer" :: ParseTree CliScheme Text) []
           `shouldBe` Success ("asdf", [])
 
     context "when the left child is unresolvable" $ do

@@ -4,14 +4,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies      #-}
 
-module Parser
+module Scheme
   ( HasValency(..)
   , valencyIs
   , ResolveError(..)
   , sumResults
   , Resolve(..)
   , resolveLifted
-  , Parser(..)
+  , Scheme(..)
   ) where
 
 import           Control.Monad.Except
@@ -66,17 +66,18 @@ class Resolve f where
 resolveLifted :: Resolve f => f r -> StreamParser tok r
 resolveLifted = liftEither . first render . resolve
 
--- | A type class for meant to parameterize 'ParseTree's. A parser can
--- consume input token and produce a result or throw an error.
-class (Functor p, Resolve p) => Parser (p :: Type -> Type) where
+-- | A type class for meant to parameterize 'ParseTree's.
+-- Implementations are collections of parsers that can consume input
+-- tokens and produce a result or throw an error.
+class (Functor p, Resolve p) => Scheme (p :: Type -> Type) where
   -- | The token type this parser operates upon.
   data Token p
 
-  -- | A 'Parser' instance must provide a rendering function so that
+  -- | A 'Scheme' instance must provide a rendering function so that
   -- tokens can be displayed in error messages.
   renderToken :: Token p -> Builder
 
-  -- | A 'Parser' instance needs to provide a function to parse its
+  -- | A 'Scheme' instance needs to provide a function to parse its
   -- tokens from 'Text' inputs. We parse from '[Text]' to '[Token p]'
   -- since it is possible that a single 'Text' might yield multiple
   -- tokens (or none).
@@ -85,11 +86,11 @@ class (Functor p, Resolve p) => Parser (p :: Type -> Type) where
   sepProd :: Proxy p -> Builder
   sepSum :: Proxy p -> Builder
 
-  -- | Generate usage information for a 'Parser' instance.
+  -- | Generate usage information for a 'Scheme' instance.
   renderParser :: p r -> Builder
 
   -- | Lift this parser into an appropriate 'StreamParser'.
   feedParser :: p r -> StreamParser (Token p) r
 
-instance Parser p => Render (Token p) where
+instance Scheme p => Render (Token p) where
   render = renderToken

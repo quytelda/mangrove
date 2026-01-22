@@ -19,7 +19,7 @@ import           Data.Kind
 import           Data.Proxy
 import           Data.Text            (Text)
 
-import           Parser
+import           Scheme
 import           Result
 import           Stream
 import           Text
@@ -93,7 +93,7 @@ instance Resolve p => Resolve (ParseTree p) where
   -- unclear. This avoids infinite loops, but might not be the
   -- expected behavior in some unforseen use-case.
 
-instance Parser p => Render (ParseTree p r) where
+instance Scheme p => Render (ParseTree p r) where
   -- special cases
   render (SumNode p (ValueNode _)) = "[" <> render p <> "]"
 
@@ -108,7 +108,7 @@ instance Parser p => Render (ParseTree p r) where
 -- | 'feed' traverses the tree until it activates a parser that
 -- consumes input. When a subtree successfully consumes input, it is
 -- replaced with an updated subtree and the traversal ceases.
-feed :: Parser p => ParseTree p r -> StreamParser (Token p) (ParseTree p r)
+feed :: Scheme p => ParseTree p r -> StreamParser (Token p) (ParseTree p r)
 feed EmptyNode = empty
 feed (ValueNode _) = empty
 feed (ParseNode parser) = ValueNode <$> feedParser parser
@@ -124,7 +124,7 @@ feed (ManyNode _ tree) =
 -- | Repeatedly traverse the tree, each time activating the first
 -- parser that can consume available input, until no more input can be
 -- consumed.
-satiate :: Parser p => ParseTree p r -> StreamParser (Token p) (ParseTree p r)
+satiate :: Scheme p => ParseTree p r -> StreamParser (Token p) (ParseTree p r)
 satiate tree = do
   result <- optional $ feed tree
   case result of
@@ -132,7 +132,7 @@ satiate tree = do
     Nothing    -> pure tree
 
 runParseTree
-  :: Parser p
+  :: Scheme p
   => ParseTree p r
   -> [Token p]
   -> Result Builder (r, [Token p])
@@ -151,7 +151,7 @@ runParseTree tree =
   (\_ -> HelpRequest)
 
 parseArguments
-  :: Parser p
+  :: Scheme p
   => ParseTree p r
   -> [Text]
   -> Result Builder (r, [Token p])

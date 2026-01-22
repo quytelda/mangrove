@@ -5,11 +5,11 @@
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE ViewPatterns      #-}
 
-module Parser.Cli
+module Scheme.Cli
   ( Flag(..)
   , OptionInfo(..)
   , CommandInfo(..)
-  , CliParser(..)
+  , CliScheme(..)
   , Token(..)
   , optHead
   , cmdHead
@@ -28,9 +28,9 @@ import           Data.Text              (Text)
 import qualified Data.Text              as T
 import qualified Data.Text.Lazy.Builder as TLB
 
-import           Parser
-import           Parser.Sub
-import           Parser.Text
+import           Scheme
+import           Scheme.Sub
+import           Scheme.Text
 import           ParseTree
 import           Result
 import           Stream
@@ -75,17 +75,17 @@ cmdHead :: CommandInfo -> Text
 cmdHead = NonEmpty.head . cmdNames
 
 -- | Parsers for top-level CLI arguments such as commands and options.
-data CliParser r
+data CliScheme r
   = CliHelp (NonEmpty Flag)
   | CliParameter (TextParser r)
-  | CliOption OptionInfo (ParseTree SubParser r)
-  | CliCommand CommandInfo (ParseTree CliParser r)
+  | CliOption OptionInfo (ParseTree SubScheme r)
+  | CliCommand CommandInfo (ParseTree CliScheme r)
   deriving (Functor)
 
-instance Render (CliParser r) where
+instance Render (CliScheme r) where
   render = renderParser
 
-instance HasValency CliParser where
+instance HasValency CliScheme where
   valency (CliHelp _) = Just 1
   valency (CliParameter _) = Just 1
   valency (CliOption _ subtree) = case valency subtree of
@@ -93,7 +93,7 @@ instance HasValency CliParser where
                                     _               -> Just 2
   valency (CliCommand _ subtree) = (+1) <$> valency subtree
 
-instance Resolve CliParser where
+instance Resolve CliScheme where
   resolve (CliParameter (TextParser hint _)) =
     throwError $ ExpectedError [TLB.fromText hint]
   resolve (CliOption info _) =
@@ -103,8 +103,8 @@ instance Resolve CliParser where
   resolve (CliHelp flags) =
     throwError $ ExpectedError [render (NonEmpty.head flags)]
 
-instance Parser CliParser where
-  data Token CliParser
+instance Scheme CliScheme where
+  data Token CliScheme
     = LongOption Text -- ^ A long form flag (e.g. --option)
     | ShortOption Char -- ^ A short form flag (e.g. -c)
     | Bound Text -- ^ A subargument bound to an option (e.g. --opt=ARG)
@@ -213,13 +213,13 @@ instance Parser CliParser where
       satiate subtree
       >>= resolveLifted
 
-addHelpOptions :: NonEmpty Flag -> ParseTree CliParser r -> ParseTree CliParser r
+addHelpOptions :: NonEmpty Flag -> ParseTree CliScheme r -> ParseTree CliScheme r
 addHelpOptions flags tree = addHelp $ go tree
   where
-    addHelp :: ParseTree CliParser a -> ParseTree CliParser a
+    addHelp :: ParseTree CliScheme a -> ParseTree CliScheme a
     addHelp _tree = ParseNode (CliHelp flags) <|> _tree
 
-    go :: ParseTree CliParser a -> ParseTree CliParser a
+    go :: ParseTree CliScheme a -> ParseTree CliScheme a
     go (ParseNode (CliCommand info subtree)) =
       ParseNode $ CliCommand info $ addHelp $ go subtree
     go (ProdNode f l r) = ProdNode f (go l) (go r)

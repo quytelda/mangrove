@@ -8,7 +8,7 @@ import           Data.Either
 
 import           Test.Hspec
 
-import           Parser.Cli
+import           Scheme.Cli
 import           ParseTree
 import           Result
 import           Text

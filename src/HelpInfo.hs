@@ -18,9 +18,9 @@ import qualified Data.Text              as T
 import qualified Data.Text.Lazy         as TL
 import qualified Data.Text.Lazy.Builder as TLB
 
-import           Parser
-import           Parser.Cli
-import           Parser.Sub
+import           Scheme
+import           Scheme.Cli
+import           Scheme.Sub
 import           ParseTree
 import           Text
 
@@ -36,7 +36,7 @@ data OptionHelp = OptionHelp
 mwhen :: Monoid a => Bool -> a -> a
 mwhen condition a = if condition then a else mempty
 
-mkOptionHelp :: OptionInfo -> ParseTree SubParser r -> OptionHelp
+mkOptionHelp :: OptionInfo -> ParseTree SubScheme r -> OptionHelp
 mkOptionHelp OptionInfo{..} subtree =
   OptionHelp
   { ohLongs  = fmtFlagList longs
@@ -51,10 +51,10 @@ mkOptionHelp OptionInfo{..} subtree =
     (longs, shorts) = NonEmpty.partition isLongFlag optFlags
     fmtFlagList = TL.intercalate ", " . fmap renderLazyText
 
-collectOptions :: ParseTree CliParser r -> Map [CommandInfo] [OptionHelp]
+collectOptions :: ParseTree CliScheme r -> Map [CommandInfo] [OptionHelp]
 collectOptions tree = go tree mempty
   where
-    go :: ParseTree CliParser r
+    go :: ParseTree CliScheme r
        -> Map [CommandInfo] [OptionHelp]
        -> Map [CommandInfo] [OptionHelp]
     go (ParseNode (CliOption info subtree)) =
@@ -105,7 +105,7 @@ fmtAllSections =
       <> fmtOptionTable ohs
   ) mempty
 
-renderHelpInfo :: Text -> Text -> ParseTree CliParser r -> Builder
+renderHelpInfo :: Text -> Text -> ParseTree CliScheme r -> Builder
 renderHelpInfo name description tree =
   "Usage: " <> render name <> " " <> render tree <> "\n\n"
   <> render description <> "\n"

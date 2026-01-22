@@ -27,12 +27,12 @@ library
   exposed-modules:
       Argon
       HelpInfo
-      Parser
-      Parser.Cli
-      Parser.Sub
-      Parser.Text
       ParseTree
       Result
+      Scheme
+      Scheme.Cli
+      Scheme.Sub
+      Scheme.Text
       Stream
       Text
   other-modules:
