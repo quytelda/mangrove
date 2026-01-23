@@ -1,5 +1,6 @@
 module Argon
-  ( parameter
+  ( CliParser
+  , parameter
   , defaultParameter
   , option
   , optionPure
@@ -17,6 +18,8 @@ import           ParseTree
 import           Control.Applicative
 import           Data.List.NonEmpty  (NonEmpty)
 import           Data.Text           (Text)
+
+type CliParser = ParseTree CliScheme
 
 class HasParameter p where
   parameter :: TextParser a -> ParseTree p a

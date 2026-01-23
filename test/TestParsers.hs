@@ -13,39 +13,39 @@ import           Scheme.Cli
 import           ParseTree
 import           Result
 
-opt_example_unit :: ParseTree CliScheme ()
+opt_example_unit :: CliParser ()
 opt_example_unit = option [LongFlag "example"] "" $ pure ()
 
-opt_e_unit :: ParseTree CliScheme ()
+opt_e_unit :: CliParser ()
 opt_e_unit = option [ShortFlag 'e'] "" $ pure ()
 
-opt_e_param :: ParseTree CliScheme Text
+opt_e_param :: CliParser Text
 opt_e_param = option [ShortFlag 'e'] "" defaultParameter
 
-opt_f_unit :: ParseTree CliScheme ()
+opt_f_unit :: CliParser ()
 opt_f_unit = option [ShortFlag 'f'] "" $ pure ()
 
-opt_example_param :: ParseTree CliScheme Text
+opt_example_param :: CliParser Text
 opt_example_param = option [LongFlag "example"] "" defaultParameter
 
-opt_example_switch :: ParseTree CliScheme Bool
+opt_example_switch :: CliParser Bool
 opt_example_switch = switch [LongFlag "example"] ""
 
-opt_example_param_optional :: ParseTree CliScheme Text
+opt_example_param_optional :: CliParser Text
 opt_example_param_optional =
   option [LongFlag "example"] "" (defaultParameter <|> pure "asdf")
 
-param_text :: ParseTree CliScheme Text
+param_text :: CliParser Text
 param_text = defaultParameter
 
-option_asdf :: ParseTree CliScheme Text
+option_asdf :: CliParser Text
 option_asdf = option ["--asdf", "-a"] "" $ pure "qwer"
 
-command_asdf :: ParseTree CliScheme Text
+command_asdf :: CliParser Text
 command_asdf = command ["asdf"] "" $ pure "qwer"
 
-cmd_example_tree :: ParseTree CliScheme Text
+cmd_example_tree :: CliParser Text
 cmd_example_tree = command ["example"] "" $ command ["asdf"] "" $ pure "qwer"
 
-testParser :: (Eq r, Show r) => ParseTree CliScheme r -> [Text] -> r -> Expectation
+testParser :: (Eq r, Show r) => CliParser r -> [Text] -> r -> Expectation
 testParser tree args expect = parseArguments tree args `shouldBe` Success (expect, [])

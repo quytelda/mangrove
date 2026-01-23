@@ -8,9 +8,10 @@ import           Data.Either
 
 import           Test.Hspec
 
-import           Scheme.Cli
+import           Argon
 import           ParseTree
 import           Result
+import           Scheme.Cli
 import           Text
 
 import           TestParsers
