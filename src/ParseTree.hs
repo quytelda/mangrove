@@ -9,6 +9,7 @@
 module ParseTree
   ( ParseTree(..)
   , satiate
+  , parseTree
   , runParseTree
   , parseArguments
   ) where
@@ -131,24 +132,35 @@ satiate tree = do
     Just tree' -> satiate tree'
     Nothing    -> pure tree
 
+parseTree
+  :: Scheme p
+  => ParseTree p r -- ^ Parser expression tree
+  -> (r -> [Token p] -> a) -- ^ Success continuation (accepts result and leftover tokens)
+  -> (Builder -> a) -- ^ Failure continuation (accepts error message)
+  -> ([Text] -> a) -- ^ Help request continuation (not sure what this accepts yet)
+  -> [Token p]
+  -> a
+parseTree tree cok cerr chelp =
+  runStreamParser (satiate tree)
+  (\tree' leftovers ->
+     case resolve tree' of
+       Right value -> cok value leftovers
+       Left err ->
+         case leftovers of
+           (token:_) -> cerr $ "unexpected " <> render token
+           _         -> cerr $ render err
+  )
+  (cerr . const "empty")
+  cerr
+  chelp
+
 runParseTree
   :: Scheme p
   => ParseTree p r
   -> [Token p]
   -> Result Builder (r, [Token p])
 runParseTree tree =
-  runStreamParser (satiate tree)
-  (\tree' leftovers ->
-     case resolve tree' of
-       Right value -> pure (value, leftovers)
-       Left err ->
-         case leftovers of
-           (token:_) -> throwError $ "unexpected " <> render token
-           _         -> throwError $ render err
-  )
-  (throwError . const "empty")
-  throwError
-  (\_ -> HelpRequest)
+  parseTree tree (curry pure) throwError (const HelpRequest)
 
 parseArguments
   :: Scheme p
