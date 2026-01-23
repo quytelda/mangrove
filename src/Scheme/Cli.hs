@@ -32,7 +32,6 @@ import           Scheme
 import           Scheme.Sub
 import           Scheme.Internal
 import           ParseTree
-import           Result
 import           Stream
 import           Text
 
@@ -184,10 +183,11 @@ instance Scheme CliScheme where
         _                 -> []
 
       -- Evaluate the subparser in a new stream context.
-      (result, leftovers) <- case parseArguments subtree args of
-                               Success value -> pure value
-                               Failure err   -> throwError err
-                               HelpRequest   -> requestHelp
+      (result, leftovers) <- parseTree subtree
+                             (curry pure)
+                             throwError
+                             (const requestHelp)
+                             (parseTokens args)
 
       -- If the subparser consumed its input, we can safely remove it
       -- the from the parent stream. However, we cannot remove partially
