@@ -15,7 +15,7 @@ import           Data.Text              (Text)
 import qualified Data.Text.Lazy.Builder as TLB
 
 import           Scheme
-import           Scheme.Text
+import           Scheme.Internal
 import           Stream
 import           Text
 

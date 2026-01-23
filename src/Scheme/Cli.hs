@@ -30,7 +30,7 @@ import qualified Data.Text.Lazy.Builder as TLB
 
 import           Scheme
 import           Scheme.Sub
-import           Scheme.Text
+import           Scheme.Internal
 import           ParseTree
 import           Result
 import           Stream

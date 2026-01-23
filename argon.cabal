@@ -31,8 +31,8 @@ library
       Result
       Scheme
       Scheme.Cli
+      Scheme.Internal
       Scheme.Sub
-      Scheme.Text
       Stream
       Text
   other-modules:

@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE ViewPatterns      #-}
 
-module Scheme.Text
+module Scheme.Internal
   ( TextParser(..)
   , runTextParser
   , DefaultParser(..)

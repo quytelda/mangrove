@@ -11,7 +11,7 @@ module Argon
 
 import           Scheme.Cli
 import           Scheme.Sub
-import           Scheme.Text
+import           Scheme.Internal
 import           ParseTree
 
 import           Control.Applicative
