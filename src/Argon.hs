@@ -1,5 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Argon
   ( CliParser
+  , withCliParser
+  , handleArguments
   , parameter
   , defaultParameter
   , option
@@ -10,16 +14,58 @@ module Argon
   , suboption
   ) where
 
-import           Scheme.Cli
-import           Scheme.Sub
-import           Scheme.Internal
+import           HelpInfo
 import           ParseTree
+import           Scheme
+import           Scheme.Cli
+import           Scheme.Internal
+import           Scheme.Sub
+import           Text
 
 import           Control.Applicative
-import           Data.List.NonEmpty  (NonEmpty)
-import           Data.Text           (Text)
+import           Data.List.NonEmpty     (NonEmpty)
+import           Data.Text              (Text)
+import qualified Data.Text              as T
+import qualified Data.Text.Lazy         as TL
+import qualified Data.Text.Lazy.Builder as TLB
+import qualified Data.Text.Lazy.IO      as TLIO
+import           System.Environment
+import           System.IO
 
 type CliParser = ParseTree CliScheme
+
+withCliParser
+  :: CliParser r
+  -> (r -> IO a) -- ^ Success handler
+  -> (TL.Text -> IO a) -- ^ Error handler
+  -> ([Text] -> IO a) -- ^ Help request handler
+  -> IO a
+withCliParser tree onSuccess onError onHelpRequest = do
+  args <- fmap T.pack <$> getArgs
+  parseTree tree
+    (\result leftover ->
+       case leftover of
+         []        -> onSuccess result
+         (token:_) -> onError $ "unexpected " <> renderLazyText token
+    )
+    (onError . TLB.toLazyText)
+    onHelpRequest
+    (parseTokens args)
+
+handleArguments
+  :: CliParser r
+  -> Text -- ^ Program name
+  -> Text -- ^ Program description
+  -> (r -> IO ())
+  -> IO ()
+handleArguments tree programName programDesc run = do
+  withCliParser tree
+    run
+    (TLIO.hPutStrLn stderr)
+    (\_ -> TLIO.putStrLn
+           $ TLB.toLazyText
+           $ renderHelpInfo programName programDesc tree
+    )
 
 class HasParameter p where
   parameter :: TextParser a -> ParseTree p a
