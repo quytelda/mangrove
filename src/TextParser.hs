@@ -18,7 +18,6 @@ import qualified Data.Text              as T
 import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Read         as TR
 
-import           Stream
 import           Text
 
 data TextParser r = TextParser
@@ -26,7 +25,7 @@ data TextParser r = TextParser
   , parserRun  :: Text -> Either Builder r
   } deriving (Functor)
 
-runTextParser :: TextParser r -> Text -> StreamParser tok r
+runTextParser :: MonadError Builder m => TextParser r -> Text -> m r
 runTextParser tp = liftEither . parserRun tp
 
 class DefaultParser r where
