@@ -19,6 +19,7 @@ import           ParseTree
 import           Scheme
 import           Scheme.Cli
 import           Scheme.Sub
+import           Stream
 import           Text
 import           TextParser
 
@@ -40,16 +41,17 @@ withCliParser
   -> (TL.Text -> IO a) -- ^ Error handler
   -> ([Text] -> IO a) -- ^ Help request handler
   -> IO a
-withCliParser tree onSuccess onError onHelpRequest = do
+withCliParser tree _onSuccess _onFailure _onHelpRequest = do
   args <- fmap T.pack <$> getArgs
-  parseTree tree
-    (\result leftover ->
-       case leftover of
-         []        -> onSuccess result
-         (token:_) -> onError $ "unexpected " <> renderLazyText token
-    )
-    (onError . TLB.toLazyText)
-    onHelpRequest
+  parseTree tree StreamHandler
+    { onSuccess = \result leftover ->
+                    case leftover of
+                      []        -> _onSuccess result
+                      (token:_) -> _onFailure $ "unexpected " <> renderLazyText token
+    , onFailure = _onFailure . TLB.toLazyText
+    , onEmpty = _onFailure . const "empty"
+    , onHelpRequest = _onHelpRequest
+    }
     (parseTokens args)
 
 handleArguments

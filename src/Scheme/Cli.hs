@@ -184,10 +184,12 @@ instance Scheme CliScheme where
         _                 -> []
 
       -- Evaluate the subparser in a new stream context.
-      (result, leftovers) <- parseTree subtree
-                             (curry pure)
-                             throwError
-                             (const requestHelp)
+      (result, leftovers) <- parseTree subtree StreamHandler
+                             { onSuccess = curry pure
+                             , onFailure = throwError
+                             , onEmpty = throwError . const "empty"
+                             , onHelpRequest = const requestHelp
+                             }
                              (parseTokens args)
 
       -- If the subparser consumed its input, we can safely remove it

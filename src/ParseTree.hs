@@ -136,24 +136,19 @@ satiate tree = do
 parseTree
   :: Scheme s
   => ParseTree s r -- ^ Parser expression tree
-  -> (r -> [Token s] -> a) -- ^ Success continuation (accepts result and leftover tokens)
-  -> (Builder -> a) -- ^ Failure continuation (accepts error message)
-  -> ([Text] -> a) -- ^ Help request continuation (not sure what this accepts yet)
+  -> StreamHandler (Token s) r a
   -> [Token s]
   -> a
-parseTree tree cok cerr chelp =
-  runStreamParser (satiate tree)
-  (\tree' leftovers ->
-     case resolve tree' of
-       Right value -> cok value leftovers
-       Left err ->
-         case leftovers of
-           (token:_) -> cerr $ "unexpected " <> render token
-           _         -> cerr $ render err
-  )
-  (cerr . const "empty")
-  cerr
-  chelp
+parseTree tree handler =
+  runStreamParser (satiate tree) handler { onSuccess = evaluateResult }
+  where
+    evaluateResult tree' leftovers =
+      case resolve tree' of
+        Right value -> onSuccess handler value leftovers
+        Left err ->
+          case leftovers of
+            (token:_) -> onFailure handler $ "unexpected " <> render token
+            _         -> onFailure handler $ render err
 
 runParseTree
   :: Scheme s
@@ -161,7 +156,13 @@ runParseTree
   -> [Token s]
   -> Result Builder (r, [Token s])
 runParseTree tree =
-  parseTree tree (curry pure) throwError (const HelpRequest)
+  parseTree tree StreamHandler
+  { onSuccess = curry pure
+  , onFailure = throwError
+  , onEmpty = throwError . const "empty"
+  , onHelpRequest = const HelpRequest
+  }
+  -- parseTree tree (curry pure) throwError (const HelpRequest)
 
 parseArguments
   :: Scheme s
