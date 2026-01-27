@@ -16,9 +16,9 @@ import qualified Data.Text.Lazy.Builder as TLB
 
 import           Resolve
 import           Scheme
-import           Scheme.Internal
 import           Stream
 import           Text
+import           TextParser
 
 -- | Parsers for subarguments of an option, i.e. '--option key=value'.
 data SubScheme r

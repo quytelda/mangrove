@@ -18,9 +18,9 @@ import           HelpInfo
 import           ParseTree
 import           Scheme
 import           Scheme.Cli
-import           Scheme.Internal
 import           Scheme.Sub
 import           Text
+import           TextParser
 
 import           Control.Applicative
 import           Data.List.NonEmpty     (NonEmpty)

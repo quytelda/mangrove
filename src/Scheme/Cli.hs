@@ -31,10 +31,10 @@ import qualified Data.Text.Lazy.Builder as TLB
 import           ParseTree
 import           Resolve
 import           Scheme
-import           Scheme.Internal
 import           Scheme.Sub
 import           Stream
 import           Text
+import           TextParser
 
 --------------------------------------------------------------------------------
 -- User Interface Descriptions
