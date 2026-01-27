@@ -28,10 +28,11 @@ import           Data.Text              (Text)
 import qualified Data.Text              as T
 import qualified Data.Text.Lazy.Builder as TLB
 
-import           Scheme
-import           Scheme.Sub
-import           Scheme.Internal
 import           ParseTree
+import           Resolve
+import           Scheme
+import           Scheme.Internal
+import           Scheme.Sub
 import           Stream
 import           Text
 

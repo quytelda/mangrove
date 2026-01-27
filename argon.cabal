@@ -28,6 +28,7 @@ library
       Argon
       HelpInfo
       ParseTree
+      Resolve
       Result
       Scheme
       Scheme.Cli

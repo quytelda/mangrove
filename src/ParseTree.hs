@@ -20,8 +20,9 @@ import           Data.Kind
 import           Data.Proxy
 import           Data.Text            (Text)
 
-import           Scheme
+import           Resolve
 import           Result
+import           Scheme
 import           Stream
 import           Text
 

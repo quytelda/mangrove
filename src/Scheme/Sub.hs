@@ -14,6 +14,7 @@ import           Control.Monad.Except
 import           Data.Text              (Text)
 import qualified Data.Text.Lazy.Builder as TLB
 
+import           Resolve
 import           Scheme
 import           Scheme.Internal
 import           Stream
