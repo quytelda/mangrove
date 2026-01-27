@@ -69,32 +69,32 @@ resolveLifted = liftEither . first render . resolve
 -- | A type class for meant to parameterize 'ParseTree's.
 -- Implementations are collections of parsers that can consume input
 -- tokens and produce a result or throw an error.
-class (Functor p, Resolve p) => Scheme (p :: Type -> Type) where
+class (Functor s, Resolve s) => Scheme (s :: Type -> Type) where
   -- | The token type this parser operates upon.
-  data Token p
+  data Token s
 
   -- | A 'Scheme' instance must provide a rendering function so that
   -- tokens can be displayed in error messages.
-  renderToken :: Token p -> Builder
+  renderToken :: Token s -> Builder
 
   -- | A 'Scheme' instance needs to provide a function to parse its
-  -- tokens from 'Text' inputs. We parse from '[Text]' to '[Token p]'
+  -- tokens from 'Text' inputs. We parse from '[Text]' to '[Token s]'
   -- since it is possible that a single 'Text' might yield multiple
   -- tokens (or none).
-  parseTokens :: [Text] -> [Token p]
+  parseTokens :: [Text] -> [Token s]
 
-  sepProd :: Proxy p -> Builder
-  sepSum :: Proxy p -> Builder
+  sepProd :: Proxy s -> Builder
+  sepSum :: Proxy s -> Builder
 
   -- | Generate usage information for a 'Scheme' instance.
-  renderParser :: p r -> Builder
+  renderParser :: s r -> Builder
 
   -- | Attempt activation of a provided parser with a given input
   -- stream. The parser either succeeds, fails, or does not apply.
   --
   -- Another way to interpret this operation is that it lifts a parser
   -- scheme into a 'StreamParser'.
-  activate :: p r -> StreamParser (Token p) r
+  activate :: s r -> StreamParser (Token s) r
 
-instance Scheme p => Render (Token p) where
+instance Scheme s => Render (Token s) where
   render = renderToken

@@ -25,22 +25,22 @@ import           Result
 import           Stream
 import           Text
 
--- | 'ParseTree p r' is an expression tree built from parsers of type
--- 'p' which evaluates to a value of type 'r' supplied with the proper
--- input.
-data ParseTree (p :: Type -> Type) (r :: Type) where
+-- | 'ParseTree scheme r' is an expression tree composed of parsers
+-- from scheme 'scheme' which evaluates to a value of type 'r' when
+-- supplied with the proper input.
+data ParseTree (scheme :: Type -> Type) (r :: Type) where
   -- | Terminal node with no value (abstracts 'empty')
-  EmptyNode :: ParseTree p r
+  EmptyNode :: ParseTree scheme r
   -- | A terminal node with a resolved value (abstracts 'pure')
-  ValueNode :: r -> ParseTree p r
+  ValueNode :: r -> ParseTree scheme r
   -- | A parser awaiting input
-  ParseNode :: p r -> ParseTree p r
+  ParseNode :: scheme r -> ParseTree scheme r
   -- | Abstracts 'liftA2' and by extension '(<*>)'
-  ProdNode :: (u -> v -> r) -> ParseTree p u -> ParseTree p v -> ParseTree p r
+  ProdNode :: (u -> v -> r) -> ParseTree scheme u -> ParseTree scheme v -> ParseTree scheme r
   -- | Abstracts '(<|>)'
-  SumNode :: ParseTree p r -> ParseTree p r -> ParseTree p r
+  SumNode :: ParseTree scheme r -> ParseTree scheme r -> ParseTree scheme r
   -- | Abstracts 'many' (@MaybeNode False@) and 'some' (@MaybeNode True@)
-  ManyNode :: Bool -> ParseTree p r -> ParseTree p [r]
+  ManyNode :: Bool -> ParseTree scheme r -> ParseTree scheme [r]
 
 instance Functor p => Functor (ParseTree p) where
   fmap _ EmptyNode          = EmptyNode
@@ -94,22 +94,22 @@ instance Resolve p => Resolve (ParseTree p) where
   -- unclear. This avoids infinite loops, but might not be the
   -- expected behavior in some unforseen use-case.
 
-instance Scheme p => Render (ParseTree p r) where
+instance Scheme s => Render (ParseTree s r) where
   -- special cases
   render (SumNode p (ValueNode _)) = "[" <> render p <> "]"
 
   render EmptyNode                 = "EMPTY"
   render (ValueNode _)             = "VALUE"
   render (ParseNode parser)        = renderParser parser
-  render (ProdNode _ l r)          = render l <> sepProd (Proxy @p) <> render r
-  render (SumNode l r)             = render l <> sepSum (Proxy @p) <> render r
+  render (ProdNode _ l r)          = render l <> sepProd (Proxy @s) <> render r
+  render (SumNode l r)             = render l <> sepSum (Proxy @s) <> render r
   render (ManyNode False p)        = "[" <> render p <> "...]"
   render (ManyNode True p)         = render p <> "..."
 
 -- | 'feed' traverses the tree until it activates a parser that
 -- consumes input. When a subtree successfully consumes input, it is
 -- replaced with an updated subtree and the traversal ceases.
-feed :: Scheme p => ParseTree p r -> StreamParser (Token p) (ParseTree p r)
+feed :: Scheme s => ParseTree s r -> StreamParser (Token s) (ParseTree s r)
 feed EmptyNode = empty
 feed (ValueNode _) = empty
 feed (ParseNode parser) = ValueNode <$> activate parser
@@ -125,7 +125,7 @@ feed (ManyNode _ tree) =
 -- | Repeatedly traverse the tree, each time activating the first
 -- parser that can consume available input, until no more input can be
 -- consumed.
-satiate :: Scheme p => ParseTree p r -> StreamParser (Token p) (ParseTree p r)
+satiate :: Scheme s => ParseTree s r -> StreamParser (Token s) (ParseTree s r)
 satiate tree = do
   result <- optional $ feed tree
   case result of
@@ -133,12 +133,12 @@ satiate tree = do
     Nothing    -> pure tree
 
 parseTree
-  :: Scheme p
-  => ParseTree p r -- ^ Parser expression tree
-  -> (r -> [Token p] -> a) -- ^ Success continuation (accepts result and leftover tokens)
+  :: Scheme s
+  => ParseTree s r -- ^ Parser expression tree
+  -> (r -> [Token s] -> a) -- ^ Success continuation (accepts result and leftover tokens)
   -> (Builder -> a) -- ^ Failure continuation (accepts error message)
   -> ([Text] -> a) -- ^ Help request continuation (not sure what this accepts yet)
-  -> [Token p]
+  -> [Token s]
   -> a
 parseTree tree cok cerr chelp =
   runStreamParser (satiate tree)
@@ -155,16 +155,16 @@ parseTree tree cok cerr chelp =
   chelp
 
 runParseTree
-  :: Scheme p
-  => ParseTree p r
-  -> [Token p]
-  -> Result Builder (r, [Token p])
+  :: Scheme s
+  => ParseTree s r
+  -> [Token s]
+  -> Result Builder (r, [Token s])
 runParseTree tree =
   parseTree tree (curry pure) throwError (const HelpRequest)
 
 parseArguments
-  :: Scheme p
-  => ParseTree p r
+  :: Scheme s
+  => ParseTree s r
   -> [Text]
-  -> Result Builder (r, [Token p])
+  -> Result Builder (r, [Token s])
 parseArguments tree = runParseTree tree . parseTokens
