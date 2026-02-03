@@ -18,6 +18,7 @@ module Stream
   ( -- * Types
     StreamParser(..)
   , StreamHandler(..)
+  , StreamState(..)
   , requestHelp
 
     -- * Context
@@ -37,11 +38,17 @@ import           Control.Monad.Except
 import           Data.Text              (Text)
 import           Data.Text.Lazy.Builder (Builder)
 
+-- | The current state of a stream parser.
+data StreamState tok = StreamState
+  { streamContent :: [Text]
+  , streamContext :: [tok]
+  } deriving (Eq, Show)
+
 data StreamHandler tok a r = StreamHandler
-  { onSuccess     :: a -> [tok] -> r -- ^ Success Continuation
-  , onEmpty       :: [tok] -> r -- ^ Empty continuation
-  , onFailure     :: Builder -> r -- ^ Failure Continuation
-  , onHelpRequest :: [Text] -> r -- ^ Help Continuation
+  { onSuccess     :: a -> StreamState tok -> r -- ^ Success Continuation
+  , onEmpty       :: StreamState tok -> r -- ^ Empty continuation
+  , onFailure     :: StreamState tok -> Builder -> r -- ^ Failure Continuation
+  , onHelpRequest :: StreamState tok -> r -- ^ Help Continuation
   } deriving (Functor)
 
 -- | The amazing stream parsing monad! This monad is comparable to a
@@ -50,7 +57,7 @@ data StreamHandler tok a r = StreamHandler
 newtype StreamParser tok a = StreamParser
   { runStreamParser
     :: forall r. StreamHandler tok a r
-    -> [tok] -- stream content
+    -> StreamState tok
     -> r
   }
 
@@ -75,59 +82,64 @@ instance Monad (StreamParser tok) where
     runStreamParser ma handler { onSuccess = \a -> runStreamParser (f a) handler }
 
 instance MonadError Builder (StreamParser tok) where
-  throwError err = StreamParser $ \handler _ -> onFailure handler err
-  catchError ma recover = StreamParser $ \handler ts ->
-    runStreamParser ma handler { onFailure = \err -> runStreamParser (recover err) handler ts } ts
+  throwError err = StreamParser $ \handler state -> onFailure handler state err
+  catchError ma recover = StreamParser $ \handler state ->
+    runStreamParser ma
+    handler { onFailure = \_ err -> runStreamParser (recover err) handler state }
+    state
 
 requestHelp :: StreamParser tok a
-requestHelp = StreamParser $ \handler _ -> onHelpRequest handler []
+requestHelp = StreamParser onHelpRequest
 
 -- | Push the given context onto the stack, perform a computation,
 -- then pop it off. This assumes the computation doesn't modify the
 -- stack.
-withContext :: Builder -> StreamParser tok a -> StreamParser tok a
-withContext context action = StreamParser $ \handler ->
-  runStreamParser action handler { onFailure = onFailure handler . prepend context }
-  where
-    prepend s1 s2 = s1 <> ": " <> s2
+withContext :: tok -> StreamParser tok a -> StreamParser tok a
+withContext context action = StreamParser $ \handler state ->
+  runStreamParser action handler
+  state { streamContext = context : streamContext state }
 
 --------------------------------------------------------------------------------
 
 -- | Remove and return the first token in the stream.
-popMaybe :: StreamParser tok (Maybe tok)
-popMaybe = StreamParser $ \handler ts ->
-  case ts of
-    (t:ts') -> onSuccess handler (Just t) ts'
-    _       -> onSuccess handler Nothing ts
+popMaybe :: StreamParser tok (Maybe Text)
+popMaybe = StreamParser $ \handler state ->
+  case streamContent state of
+    (t:ts') -> onSuccess handler (Just t) state { streamContent = ts' }
+    _       -> onSuccess handler Nothing state
 
 -- | View the first token in the stream without consuming it.
-peekMaybe :: StreamParser tok (Maybe tok)
-peekMaybe = StreamParser $ \handler ts ->
-  case ts of
-    (t:_) -> onSuccess handler (Just t) ts
-    _     -> onSuccess handler Nothing ts
+peekMaybe :: StreamParser tok (Maybe Text)
+peekMaybe = StreamParser $ \handler state ->
+  case streamContent state of
+    (t:_) -> onSuccess handler (Just t) state
+    _     -> onSuccess handler Nothing state
 
 -- | Remove and return the first token in the stream. Evaluates to
 -- 'empty' if there are no tokens in the stream.
-pop :: StreamParser tok tok
-pop = StreamParser $ \handler ts ->
-  case ts of
-    (t:ts') -> onSuccess handler t ts'
-    _       -> onEmpty handler ts
+pop :: StreamParser tok Text
+pop = StreamParser $ \handler state ->
+  case streamContent state of
+    (t:ts') -> onSuccess handler t state { streamContent = ts' }
+    _       -> onEmpty handler state
 
 -- | View the first token in the stream without consuming it.
 -- Evaluates to 'empty' if there are no tokens in the stream.
-peek :: StreamParser tok tok
-peek = StreamParser $ \handler ts ->
-  case ts of
-    (t:_) -> onSuccess handler t ts
-    _     -> onEmpty handler ts
+peek :: StreamParser tok Text
+peek = StreamParser $ \handler state ->
+  case streamContent state of
+    (t:_) -> onSuccess handler t state
+    _     -> onEmpty handler state
 
 -- | Prepend a token to the front of the stream.
-push :: tok -> StreamParser tok ()
-push t = StreamParser $ \handler -> onSuccess handler () . (t:)
+push :: Text -> StreamParser tok ()
+push t = StreamParser $ \handler state ->
+  onSuccess handler ()
+  state { streamContent = t : streamContent state }
 
 -- | Discard the first token in the stream. Nothing happens if there
 -- are no tokens in the stream.
 pop_ :: StreamParser tok ()
-pop_ = StreamParser $ \handler -> onSuccess handler () . drop 1
+pop_ = StreamParser $ \handler state ->
+  onSuccess handler ()
+  state { streamContent = drop 1 $ streamContent state }
