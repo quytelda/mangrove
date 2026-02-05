@@ -42,9 +42,9 @@ import           Data.Text.Lazy.Builder (Builder)
 
 -- | The current state of a stream parser.
 data StreamState tok = StreamState
-  { streamContent :: [Text]
-  , streamContext :: [tok]
-  , streamEscaped :: Bool
+  { streamContent :: [Text] -- ^ A sequence of 'Text' values
+  , streamContext :: [tok]  -- ^ A stack representing current parsing context
+  , streamEscaped :: Bool   -- ^ Escaped mode
   } deriving (Eq, Show)
 
 data StreamHandler tok a r = StreamHandler
