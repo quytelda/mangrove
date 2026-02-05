@@ -143,9 +143,9 @@ parseTree tree handler args =
   runStreamParser (satiate tree) handler { onSuccess = evaluateResult } state
   where
     state = StreamState args [] False
-    evaluateResult tree' _state =
+    evaluateResult _state tree' =
       case resolve tree' of
-        Right value -> onSuccess handler value _state
+        Right value -> onSuccess handler _state value
         Left err ->
           case streamContent _state of
             (token:_) -> onFailure handler _state $ "unexpected " <> render token
@@ -158,7 +158,7 @@ parseArguments
   -> Result Builder (r, [Text])
 parseArguments tree =
   parseTree tree StreamHandler
-  { onSuccess = \result state -> pure (result, streamContent state)
+  { onSuccess = \state result -> pure (result, streamContent state)
   , onEmpty = \state -> throwWithContext "empty" (streamContext state)
   , onFailure = \state err -> throwWithContext err (streamContext state)
   , onHelpRequest = const HelpRequest
