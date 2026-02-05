@@ -10,13 +10,13 @@ module ParseTree
   ( ParseTree(..)
   , satiate
   , parseTree
-  , runParseTree
   , parseArguments
   ) where
 
 import           Control.Applicative
 import           Control.Monad.Except
 import           Data.Kind
+import qualified Data.List            as List
 import           Data.Proxy
 import           Data.Text            (Text)
 
@@ -137,36 +137,36 @@ parseTree
   :: Scheme s
   => ParseTree s r -- ^ Parser expression tree
   -> StreamHandler (Token s) r a
-  -> [Token s]
+  -> [Text]
   -> a
-parseTree tree handler =
-  runStreamParser (satiate tree) handler { onSuccess = evaluateResult }
+parseTree tree handler args =
+  runStreamParser (satiate tree) handler { onSuccess = evaluateResult } state
   where
-    evaluateResult tree' leftovers =
+    state = StreamState args [] False
+    evaluateResult tree' _state =
       case resolve tree' of
-        Right value -> onSuccess handler value leftovers
+        Right value -> onSuccess handler value _state
         Left err ->
-          case leftovers of
-            (token:_) -> onFailure handler $ "unexpected " <> render token
-            _         -> onFailure handler $ render err
-
-runParseTree
-  :: Scheme s
-  => ParseTree s r
-  -> [Token s]
-  -> Result Builder (r, [Token s])
-runParseTree tree =
-  parseTree tree StreamHandler
-  { onSuccess = curry pure
-  , onFailure = throwError
-  , onEmpty = throwError . const "empty"
-  , onHelpRequest = const HelpRequest
-  }
-  -- parseTree tree (curry pure) throwError (const HelpRequest)
+          case streamContent _state of
+            (token:_) -> onFailure handler _state $ "unexpected " <> render token
+            _         -> onFailure handler _state $ render err
 
 parseArguments
   :: Scheme s
   => ParseTree s r
   -> [Text]
-  -> Result Builder (r, [Token s])
-parseArguments tree = runParseTree tree . parseTokens
+  -> Result Builder (r, [Text])
+parseArguments tree =
+  parseTree tree StreamHandler
+  { onSuccess = \result state -> pure (result, streamContent state)
+  , onEmpty = \state -> throwWithContext "empty" (streamContext state)
+  , onFailure = \state err -> throwWithContext err (streamContext state)
+  , onHelpRequest = const HelpRequest
+  }
+  where
+    throwWithContext err contexts =
+      throwError
+      $ mconcat
+      $ List.intersperse ": "
+      $ reverse
+      $ err : map render contexts
