@@ -42,6 +42,7 @@ import           Data.Text.Lazy.Builder (Builder)
 data StreamState tok = StreamState
   { streamContent :: [Text]
   , streamContext :: [tok]
+  , streamEscaped :: Bool
   } deriving (Eq, Show)
 
 data StreamHandler tok a r = StreamHandler
@@ -87,6 +88,17 @@ instance MonadError Builder (StreamParser tok) where
     runStreamParser ma
     handler { onFailure = \_ err -> runStreamParser (recover err) handler state }
     state
+
+-- | Enable or disable escaped parsing.
+setEscaped :: Bool -> StreamParser tok ()
+setEscaped b = StreamParser $ \handler state ->
+  onSuccess handler ()
+  state { streamEscaped = b }
+
+-- | Check whether escaped parsing is enabled.
+isEscaped :: StreamParser tok Bool
+isEscaped = StreamParser $ \handler state ->
+  onSuccess handler (streamEscaped state) state
 
 requestHelp :: StreamParser tok a
 requestHelp = StreamParser onHelpRequest
