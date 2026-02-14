@@ -2,7 +2,6 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
-{-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE PolymorphicComponents     #-}
 {-# LANGUAGE TypeFamilies              #-}
 
