@@ -76,7 +76,7 @@ cmdHead = NonEmpty.head . cmdNames
 -- | Parsers for top-level CLI arguments such as commands and options.
 data CliScheme r
   = CliParameter (TextParser r)
-  | CliOption OptionInfo (ParseTree SubScheme r)
+  | CliOption OptionInfo Bool (ParseTree SubScheme r)
   | CliCommand CommandInfo (ParseTree CliScheme r)
   deriving (Functor)
 
@@ -85,15 +85,16 @@ instance Render (CliScheme r) where
 
 instance HasValency CliScheme where
   valency (CliParameter _) = Just 1
-  valency (CliOption _ subtree) = case valency subtree of
-                                    Just n | n <= 0 -> Just 1
-                                    _               -> Just 2
+  valency (CliOption _ _ subtree) =
+    case valency subtree of
+      Just n | n <= 0 -> Just 1
+      _               -> Just 2
   valency (CliCommand _ subtree) = (+1) <$> valency subtree
 
 instance Resolve CliScheme where
   resolve (CliParameter (TextParser hint _)) =
     throwError $ ExpectedError [TLB.fromText hint]
-  resolve (CliOption info _) =
+  resolve (CliOption info _ _) =
     throwError $ ExpectedError [render (optHead info)]
   resolve (CliCommand info _) =
     throwError $ ExpectedError [render (cmdHead info)]
@@ -130,7 +131,7 @@ instance Scheme CliScheme where
   sepSum _ = " | "
 
   renderParser (CliParameter tp) = render $ parserHint tp
-  renderParser (CliOption info subtree) =
+  renderParser (CliOption info _ subtree) =
     let rep = optHead info
         separator = case rep of
                       LongFlag _  -> "="
@@ -149,11 +150,10 @@ instance Scheme CliScheme where
 
     withContext (Argument next) $
       pop_ *> runTextParser tp next
-  activate (CliOption info subtree) = do
+  activate (CliOption info compound subtree) = do
     escapeGuard
 
-    next <- peek
-    token <- case next of
+    token <- peek >>= \case
       (parseLongOption -> Just (k, mv))
         | LongFlag k `elem` optFlags info ->
           pure $ LongOption k mv
@@ -166,42 +166,40 @@ instance Scheme CliScheme where
     withContext token $ do
       -- Collect arguments for the subparser's stream from the next
       -- argument in the parent stream.
-      let asList s = if valencyIs (> 1) subtree
-                     then T.split (== ',') s
-                     else [s]
-
       args <- peekMaybe <&> \case
-        Just s | not $ "-" `T.isPrefixOf` s -> asList s
+        Just s
+          | not ("-" `T.isPrefixOf` s) ->
+            if compound
+            then T.split (== ',') s
+            else [s]
         _                 -> []
 
-      undefined
       -- Evaluate the subparser in a new stream context.
-      -- (result, leftovers) <- parseTree subtree StreamHandler
-      --                        { onSuccess = curry pure
-      --                        , onFailure = throwError
-      --                        , onEmpty = throwError . const "empty"
-      --                        , onHelpRequest = const requestHelp
-      --                        }
-      --                        undefined -- (parseTokens args)
+      (result, leftovers) <- parseTree subtree StreamHandler
+                             { onSuccess = \state result -> pure (result, streamContent state)
+                             , onFailure = \_ -> throwError
+                             , onEmpty = \_ -> throwError "empty"
+                             , onHelpRequest = const requestHelp
+                             }
+                             (StreamState args [] (not compound))
 
       -- If the subparser consumed its input, we can safely remove it
       -- the from the parent stream. However, we cannot remove partially
       -- consumed input, so in that case we throw an error.
-      -- when (length args /= length leftovers) $
-      --   pop_ *> mapM_ (\arg -> throwError $ "unrecognized subargument: " <> render arg) leftovers
+      when (length args /= length leftovers) $
+        pop_ *> mapM_ (\arg -> throwError $ "unrecognized subargument: " <> render arg) leftovers
 
-      -- pure result
+      pure result
   activate (CliCommand info subtree) = do
     escapeGuard
 
     next <- peek
     guard $ next `elem` cmdNames info
-    let token = Command next
     pop_
 
-    withContext token $
-      undefined -- satiate subtree
-      -- >>= resolveLifted
+    withContext (Command next) $
+      satiate subtree
+      >>= resolveLifted
 
 -- addHelpOptions :: NonEmpty Flag -> ParseTree CliScheme r -> ParseTree CliScheme r
 -- addHelpOptions flags tree = addHelp $ go tree
