@@ -13,7 +13,6 @@ module Scheme.Cli
   , Token(..)
   , optHead
   , cmdHead
-  , addHelpOptions
   ) where
 
 import           Control.Applicative
@@ -76,8 +75,7 @@ cmdHead = NonEmpty.head . cmdNames
 
 -- | Parsers for top-level CLI arguments such as commands and options.
 data CliScheme r
-  = CliHelp (NonEmpty Flag)
-  | CliParameter (TextParser r)
+  = CliParameter (TextParser r)
   | CliOption OptionInfo (ParseTree SubScheme r)
   | CliCommand CommandInfo (ParseTree CliScheme r)
   deriving (Functor)
@@ -86,7 +84,6 @@ instance Render (CliScheme r) where
   render = renderParser
 
 instance HasValency CliScheme where
-  valency (CliHelp _) = Just 1
   valency (CliParameter _) = Just 1
   valency (CliOption _ subtree) = case valency subtree of
                                     Just n | n <= 0 -> Just 1
@@ -100,41 +97,38 @@ instance Resolve CliScheme where
     throwError $ ExpectedError [render (optHead info)]
   resolve (CliCommand info _) =
     throwError $ ExpectedError [render (cmdHead info)]
-  resolve (CliHelp flags) =
-    throwError $ ExpectedError [render (NonEmpty.head flags)]
+
+parseLongOption :: Text -> Maybe (Text, Maybe Text)
+parseLongOption (T.stripPrefix "--" -> Just s)
+  | not (T.null s) =
+    case keyEqualsValue s of
+      Just (k, v) -> pure $ (k, Just v)
+      Nothing     -> pure $ (s, Nothing)
+parseLongOption _ = empty
+
+parseShortOption :: Text -> Maybe (Char, Maybe Text)
+parseShortOption = undefined
 
 instance Scheme CliScheme where
   data Token CliScheme
-    = LongOption Text -- ^ A long form flag (e.g. --option)
-    | ShortOption Char -- ^ A short form flag (e.g. -c)
-    | Bound Text -- ^ A subargument bound to an option (e.g. --opt=ARG)
+    = LongOption Text (Maybe Text) -- ^ A long form flag (e.g. --option)
+    | ShortOption Char (Maybe Text) -- ^ A short form flag (e.g. -c)
     | Argument Text -- ^ A freeform argument that is not an option
-    | Escaped Text -- ^ An argument escaped using '--' that can only
-                   -- be consumed by 'CliParameter' parsers.
+    | Command Text -- ^ A command
     deriving (Eq, Show)
 
-  renderToken (LongOption s)  = "--" <> render s
-  renderToken (ShortOption c) = "-" <> render c
-  renderToken (Bound s)       = "subargument \"" <> render s <> "\""
-  renderToken (Argument s)    = render s
-  renderToken (Escaped s)     = render s
-
-  parseTokens args =
-    let (regularArgs, drop 1 -> escapedArgs) = break (== "--") args
-    in concatMap argToTokens regularArgs <> fmap Escaped escapedArgs
-    where
-      argToTokens (T.stripPrefix "--" -> Just s) =
-        case keyEqualsValue s of
-          Just (k, v) -> [LongOption k, Bound v]
-          Nothing     -> [LongOption s]
-      argToTokens (T.stripPrefix "-" -> Just s)
-        | not (T.null s) = ShortOption <$> T.unpack s
-      argToTokens s = [Argument s]
+  renderToken (LongOption k mv)  = "--" <> render k
+                                   <> case mv of
+                                        Nothing -> mempty
+                                        Just v  -> "=" <> render v
+  renderToken (ShortOption k mv) = "-" <> render k
+                                   <> maybe mempty render mv
+  renderToken (Argument s)       = render s
+  renderToken (Command s)        = render s
 
   sepProd _ = " "
   sepSum _ = " | "
 
-  renderParser (CliHelp flags) = render $ NonEmpty.head flags
   renderParser (CliParameter tp) = render $ parserHint tp
   renderParser (CliOption info subtree) =
     let rep = optHead info
@@ -148,30 +142,28 @@ instance Scheme CliScheme where
   renderParser (CliCommand info subtree) = "{" <> render (cmdHead info) <> " "
                                            <> render subtree <> "}"
 
-  activate (CliHelp flags) = do
-    peek >>= \case
-      LongOption  s -> guard $ LongFlag  s `elem` flags
-      ShortOption c -> guard $ ShortFlag c `elem` flags
+  activate (CliParameter tp) = do
+    next <- peek
+    escaped <- isEscaped
+    guard $ escaped || not ("-" `T.isPrefixOf` next)
+
+    withContext (Argument next) $
+      pop_ *> runTextParser tp next
+  activate (CliOption info subtree) = do
+    escapeGuard
+
+    next <- peek
+    token <- case next of
+      (parseLongOption -> Just (k, mv))
+        | LongFlag k `elem` optFlags info ->
+          pure $ LongOption k mv
+      (parseShortOption -> Just (k, mv))
+        | ShortFlag k `elem` optFlags info ->
+          pure $ ShortOption k mv
       _ -> empty
     pop_
-    requestHelp
-  activate (CliParameter tp) = do
-    text <- peek >>= \case
-      Argument s -> pure s
-      Escaped s  -> pure s
-      _          -> empty
 
-    withContext (render (parserHint tp) <> " parameter") $
-      pop_ *> runTextParser tp text
-  activate (CliOption info subtree) = do
-    next <- peek
-    case next of
-      LongOption  s -> guard $ LongFlag  s `elem` optFlags info
-      ShortOption c -> guard $ ShortFlag c `elem` optFlags info
-      _             -> empty
-    pop_
-
-    withContext (render next <> " option") $ do
+    withContext token $ do
       -- Collect arguments for the subparser's stream from the next
       -- argument in the parent stream.
       let asList s = if valencyIs (> 1) subtree
@@ -179,53 +171,48 @@ instance Scheme CliScheme where
                      else [s]
 
       args <- peekMaybe <&> \case
-        Just (Bound s)    -> asList s
-        Just (Argument s) -> asList s
+        Just s | not $ "-" `T.isPrefixOf` s -> asList s
         _                 -> []
 
+      undefined
       -- Evaluate the subparser in a new stream context.
-      (result, leftovers) <- parseTree subtree StreamHandler
-                             { onSuccess = curry pure
-                             , onFailure = throwError
-                             , onEmpty = throwError . const "empty"
-                             , onHelpRequest = const requestHelp
-                             }
-                             (parseTokens args)
+      -- (result, leftovers) <- parseTree subtree StreamHandler
+      --                        { onSuccess = curry pure
+      --                        , onFailure = throwError
+      --                        , onEmpty = throwError . const "empty"
+      --                        , onHelpRequest = const requestHelp
+      --                        }
+      --                        undefined -- (parseTokens args)
 
       -- If the subparser consumed its input, we can safely remove it
       -- the from the parent stream. However, we cannot remove partially
       -- consumed input, so in that case we throw an error.
-      when (length args /= length leftovers) $
-        pop_ *> mapM_ (\arg -> throwError $ "unrecognized subargument: " <> render arg) leftovers
+      -- when (length args /= length leftovers) $
+      --   pop_ *> mapM_ (\arg -> throwError $ "unrecognized subargument: " <> render arg) leftovers
 
-      -- Ensure we are not leaving an unconsumed bound argument at the
-      -- head of the stream.
-      peekMaybe >>= \case
-        Just (Bound s) -> throwError $ "unrecognized subargument: " <> render s
-        _ -> pure ()
-
-      pure result
+      -- pure result
   activate (CliCommand info subtree) = do
+    escapeGuard
+
     next <- peek
-    case next of
-      Argument s -> guard $ s `elem` cmdNames info
-      _          -> empty
+    guard $ next `elem` cmdNames info
+    let token = Command next
     pop_
 
-    withContext (render next <> " command") $
-      satiate subtree
-      >>= resolveLifted
+    withContext token $
+      undefined -- satiate subtree
+      -- >>= resolveLifted
 
-addHelpOptions :: NonEmpty Flag -> ParseTree CliScheme r -> ParseTree CliScheme r
-addHelpOptions flags tree = addHelp $ go tree
-  where
-    addHelp :: ParseTree CliScheme a -> ParseTree CliScheme a
-    addHelp _tree = ParseNode (CliHelp flags) <|> _tree
+-- addHelpOptions :: NonEmpty Flag -> ParseTree CliScheme r -> ParseTree CliScheme r
+-- addHelpOptions flags tree = addHelp $ go tree
+--   where
+--     addHelp :: ParseTree CliScheme a -> ParseTree CliScheme a
+--     addHelp _tree = ParseNode (CliHelp flags) <|> _tree
 
-    go :: ParseTree CliScheme a -> ParseTree CliScheme a
-    go (ParseNode (CliCommand info subtree)) =
-      ParseNode $ CliCommand info $ addHelp $ go subtree
-    go (ProdNode f l r) = ProdNode f (go l) (go r)
-    go (SumNode l r) = SumNode (go l) (go r)
-    go (ManyNode require p) = ManyNode require (go p)
-    go node = node
+--     go :: ParseTree CliScheme a -> ParseTree CliScheme a
+--     go (ParseNode (CliCommand info subtree)) =
+--       ParseNode $ CliCommand info $ addHelp $ go subtree
+--     go (ProdNode f l r) = ProdNode f (go l) (go r)
+--     go (SumNode l r) = SumNode (go l) (go r)
+--     go (ManyNode require p) = ManyNode require (go p)
+--     go node = node
