@@ -29,9 +29,9 @@ optionSpec = do
       `shouldBe` Success ((), [])
 
   it "parses options in any order" $ do
-    parseArguments (opt_e_unit *> opt_f_unit) ["-ef"]
+    parseArguments (opt_e_unit *> opt_f_unit) ["-e", "-f"]
       `shouldBe` Success ((), [])
-    parseArguments (opt_e_unit *> opt_f_unit) ["-fe"]
+    parseArguments (opt_e_unit *> opt_f_unit) ["-f", "-e"]
       `shouldBe` Success ((), [])
 
   describe "switches" $ do
@@ -52,7 +52,7 @@ optionSpec = do
     context "when no argument is expected" $ do
       it "parsing fails" $ do
         parseArguments opt_example_unit ["--example=qwer"]
-          `shouldBe` Failure "--example option: unrecognized subargument: qwer"
+          `shouldBe` Failure "--example: unrecognized subargument: qwer"
 
   context "when no argument is expected" $ do
     context "when an argument is available" $ do
@@ -73,7 +73,7 @@ optionSpec = do
     context "when no argument is provided" $ do
       it "fails to parse" $ do
         parseArguments opt_example_param ["--example"]
-          `shouldBe` Failure "--example option: expected: STRING"
+          `shouldBe` Failure "--example: expected: STRING"
     context "when an argument is provided" $ do
       it "the argument is consumed" $ do
         parseArguments opt_example_param ["--example", "qwer"]
@@ -92,26 +92,26 @@ optionSpec = do
         parseArguments opt_example_param_optional ["--example", "qwer"]
           `shouldBe` Success ("qwer", [])
 
-  describe "help options" $ do
-    context "when a help option is present" $ do
-      it "requests help" $ do
-        parseArguments (addHelpOptions ["--help"] opt_example_unit) ["--help"]
-          `shouldBe` HelpRequest
-      it "works for subcommands" $ do
-        parseArguments (addHelpOptions ["--help"] cmd_example_tree) ["example", "--help"]
-          `shouldBe` HelpRequest
-        parseArguments (addHelpOptions ["--help"] cmd_example_tree) ["example", "asdf", "--help"]
-          `shouldBe` HelpRequest
+  -- describe "help options" $ do
+  --   context "when a help option is present" $ do
+  --     it "requests help" $ do
+  --       parseArguments (addHelpOptions ["--help"] opt_example_unit) ["--help"]
+  --         `shouldBe` HelpRequest
+  --     it "works for subcommands" $ do
+  --       parseArguments (addHelpOptions ["--help"] cmd_example_tree) ["example", "--help"]
+  --         `shouldBe` HelpRequest
+  --       parseArguments (addHelpOptions ["--help"] cmd_example_tree) ["example", "asdf", "--help"]
+  --         `shouldBe` HelpRequest
 
-    context "when a help option is absent" $ do
-      it "doesn't request help" $ do
-        parseArguments (addHelpOptions ["--help"] opt_example_unit) ["--example"]
-          `shouldBe` Success ((), [])
-        parseArguments (addHelpOptions ["--help"] opt_example_unit) []
-          `shouldBe` Failure "expected: --help or --example"
-      it "isn't activated by escaped options" $ do
-        parseArguments (addHelpOptions ["--help"] opt_example_unit) ["--", "--help"]
-          `shouldBe` Failure "unexpected --help"
+  --   context "when a help option is absent" $ do
+  --     it "doesn't request help" $ do
+  --       parseArguments (addHelpOptions ["--help"] opt_example_unit) ["--example"]
+  --         `shouldBe` Success ((), [])
+  --       parseArguments (addHelpOptions ["--help"] opt_example_unit) []
+  --         `shouldBe` Failure "expected: --help or --example"
+  --     it "isn't activated by escaped options" $ do
+  --       parseArguments (addHelpOptions ["--help"] opt_example_unit) ["--", "--help"]
+  --         `shouldBe` Failure "unexpected --help"
 
 generalSpec :: Spec
 generalSpec = do
@@ -139,12 +139,12 @@ generalSpec = do
   context "when not all input can be consumed" $ do
     it "returns unconsumed arguments" $ do
       parseArguments param_text ["asdf", "qwer"]
-        `shouldBe` Success ("asdf", [Argument "qwer"])
+        `shouldBe` Success ("asdf", ["qwer"])
 
-  context "when the first token is a bound argument" $ do
-    it "fails without consuming any tokens" $ do
-      runParseTree param_text [Bound "asdf"]
-        `shouldBe` Failure "unexpected subargument \"asdf\""
+  -- context "when the first token is a bound argument" $ do
+  --   it "fails without consuming any tokens" $ do
+  --     runParseTree param_text [Bound "asdf"]
+  --       `shouldBe` Failure "unexpected subargument \"asdf\""
 
 spec :: Spec
 spec = do

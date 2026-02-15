@@ -54,9 +54,9 @@ spec = do
     context "when one child is triggered" $ do
       it "prunes the other child" $ do
         parseArguments (opt_e_unit <|> opt_f_unit) ["-e", "-f"]
-          `shouldBe` Success ((), [ShortOption 'f'])
+          `shouldBe` Success ((), ["-f"])
         parseArguments (opt_e_unit <|> opt_f_unit) ["-f", "-e"]
-          `shouldBe` Success ((), [ShortOption 'e'])
+          `shouldBe` Success ((), ["-e"])
 
   describe "many" $ do
     it "parses multiple instances" $ do
@@ -64,7 +64,7 @@ spec = do
         `shouldBe` Success (["asdf", "qwer", "zxcv"], [])
     it "parses zero instances" $ do
       parseArguments (many opt_e_param) ["blah"]
-        `shouldBe` Success ([], [Argument "blah"])
+        `shouldBe` Success ([], ["blah"])
 
     it "handles compound trees" $ do
       let tree = (opt_f_unit *> opt_e_param) <|> opt_example_param
@@ -103,12 +103,12 @@ spec = do
     it "parses exactly one instance" $ do
       parseArguments (optional opt_e_param) ["-e", "asdf", "-e", "qwer", "-e", "zxcv"]
         `shouldBe` Success ( Just "asdf"
-                         , [ ShortOption 'e'
-                           , Argument "qwer"
-                           , ShortOption 'e'
-                           , Argument "zxcv"
+                         , [ "-e"
+                           , "qwer"
+                           , "-e"
+                           , "zxcv"
                            ]
                          )
     it "parses zero instances" $ do
       parseArguments (optional opt_e_param) ["blah"]
-        `shouldBe` Success (Nothing, [Argument "blah"])
+        `shouldBe` Success (Nothing, ["blah"])
