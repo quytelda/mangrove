@@ -39,20 +39,20 @@ withCliParser
   :: CliParser r
   -> (r -> IO a) -- ^ Success handler
   -> (TL.Text -> IO a) -- ^ Error handler
-  -> ([Text] -> IO a) -- ^ Help request handler
+  -> ([Token CliScheme] -> IO a) -- ^ Help request handler
   -> IO a
 withCliParser tree _onSuccess _onFailure _onHelpRequest = do
   args <- fmap T.pack <$> getArgs
   parseTree tree StreamHandler
-    { onSuccess = \result leftover ->
-                    case leftover of
+    { onSuccess = \state result ->
+                    case streamContent state of
                       []        -> _onSuccess result
                       (token:_) -> _onFailure $ "unexpected " <> renderLazyText token
-    , onFailure = _onFailure . TLB.toLazyText
-    , onEmpty = _onFailure . const "empty"
-    , onHelpRequest = _onHelpRequest
+    , onFailure = \_ err -> _onFailure $ TLB.toLazyText err
+    , onEmpty = \_ -> _onFailure "empty"
+    , onHelpRequest = \state -> _onHelpRequest $ streamContext state
     }
-    (parseTokens args)
+    (StreamState args [] False)
 
 handleArguments
   :: CliParser r
@@ -91,7 +91,7 @@ option
   -> Text
   -> ParseTree SubScheme a
   -> ParseTree CliScheme a
-option flags help = ParseNode . CliOption (OptionInfo flags help)
+option flags help = ParseNode . CliOption (OptionInfo flags help) False
 
 -- | Define a CLI option which takes no parameter and produces a pure value.
 optionPure
@@ -99,7 +99,7 @@ optionPure
   -> Text
   -> a
   -> ParseTree CliScheme a
-optionPure flags help = ParseNode . CliOption (OptionInfo flags help) . pure
+optionPure flags help = ParseNode . CliOption (OptionInfo flags help) False . pure
 
 -- | Define a CLI option which produces 'True' if present and 'False'
 -- otherwise.

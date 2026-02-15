@@ -55,7 +55,7 @@ collectOptions tree = go tree mempty
     go :: ParseTree CliScheme r
        -> Map [CommandInfo] [OptionHelp]
        -> Map [CommandInfo] [OptionHelp]
-    go (ParseNode (CliOption info subtree)) =
+    go (ParseNode (CliOption info _ subtree)) =
       Map.insertWith (<>) [] [mkOptionHelp info subtree]
     go (ParseNode (CliCommand info subtree)) =
       Map.union $ Map.mapKeys (info :) $ collectOptions subtree
