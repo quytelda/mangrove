@@ -19,6 +19,9 @@ module Stream
   , StreamHandler(..)
   , StreamState(..)
   , requestHelp
+  , setEscaped
+  , isEscaped
+  , escapeGuard
 
     -- * Context
   , withContext
@@ -33,6 +36,7 @@ module Stream
   ) where
 
 import           Control.Applicative
+import           Control.Monad
 import           Control.Monad.Except
 import           Data.Text              (Text)
 import           Data.Text.Lazy.Builder (Builder)
@@ -97,6 +101,9 @@ setEscaped b = StreamParser $ \handler state ->
 isEscaped :: StreamParser tok Bool
 isEscaped = StreamParser $ \handler state ->
   onSuccess handler state (streamEscaped state)
+
+escapeGuard :: StreamParser tok ()
+escapeGuard = isEscaped >>= guard . not
 
 requestHelp :: StreamParser tok a
 requestHelp = StreamParser onHelpRequest
