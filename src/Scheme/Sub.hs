@@ -47,27 +47,30 @@ instance Scheme SubScheme where
   renderToken (SubAssoc k v)  = render k <> "=" <> render v
   renderToken (SubArgument s) = render s
 
-  parseTokens = fmap parse
-    where
-      parse (keyEqualsValue -> Just (k, v)) = SubAssoc k v
-      parse s                               = SubArgument s
-
   sepProd _ = ","
   sepSum _ = " | "
 
   renderParser (SubParameter tp)  = render $ parserHint tp
   renderParser (SubOption key tp) = render key <> "=" <> render (parserHint tp)
 
-  activate (SubParameter tp) = do
-    peek >>= \case
-      SubArgument s ->
-        withContext (render (parserHint tp) <> " subparameter") $
-        pop_ *> runTextParser tp s
-      _             -> empty
-  activate (SubOption key tp) = do
-    peek >>= \case
-      SubAssoc k v
-        | key == k ->
-            withContext ("\"" <> render key <> "\" suboption") $
-            pop_ *> runTextParser tp v
-      _                          -> empty
+  activate parser = do
+    next <- peek
+    escaped <- isEscaped
+
+    case (parser, keyEqualsValue next) of
+      (SubParameter tp, Nothing) ->
+        withContext (SubArgument next) $
+        pop_ *> runTextParser tp next
+      (SubOption _ _, Nothing) ->
+        empty
+      (SubOption key tp, Just (k,v))
+        | not escaped && key == k ->
+          withContext (SubAssoc k v) $
+          pop_ *> runTextParser tp v
+      (SubParameter tp, Just _)
+        | escaped ->
+          withContext (SubArgument next) $
+          pop_ *> runTextParser tp next
+        | otherwise ->
+          empty
+      _ -> empty
