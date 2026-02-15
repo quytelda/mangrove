@@ -41,12 +41,6 @@ class (Functor s, Resolve s) => Scheme (s :: Type -> Type) where
   -- tokens can be displayed in error messages.
   renderToken :: Token s -> Builder
 
-  -- | A 'Scheme' instance needs to provide a function to parse its
-  -- tokens from 'Text' inputs. We parse from '[Text]' to '[Token s]'
-  -- since it is possible that a single 'Text' might yield multiple
-  -- tokens (or none).
-  parseTokens :: [Text] -> [Token s]
-
   sepProd :: Proxy s -> Builder
   sepSum :: Proxy s -> Builder
 
