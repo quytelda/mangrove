@@ -137,12 +137,11 @@ parseTree
   :: Scheme s
   => ParseTree s r -- ^ Parser expression tree
   -> StreamHandler (Token s) r a
-  -> [Text]
+  -> StreamState (Token s)
   -> a
-parseTree tree handler args =
+parseTree tree handler state =
   runStreamParser (satiate tree) handler { onSuccess = evaluateResult } state
   where
-    state = StreamState args [] False
     evaluateResult _state tree' =
       case resolve tree' of
         Right value -> onSuccess handler _state value
@@ -156,13 +155,14 @@ parseArguments
   => ParseTree s r
   -> [Text]
   -> Result Builder (r, [Text])
-parseArguments tree =
+parseArguments tree args =
   parseTree tree StreamHandler
   { onSuccess = \state result -> pure (result, streamContent state)
   , onEmpty = \state -> throwWithContext "empty" (streamContext state)
   , onFailure = \state err -> throwWithContext err (streamContext state)
   , onHelpRequest = const HelpRequest
   }
+  (StreamState args [] False)
   where
     throwWithContext err contexts =
       throwError
