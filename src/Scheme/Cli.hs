@@ -108,7 +108,10 @@ parseLongOption (T.stripPrefix "--" -> Just s)
 parseLongOption _ = empty
 
 parseShortOption :: Text -> Maybe (Char, Maybe Text)
-parseShortOption = undefined
+parseShortOption (T.stripPrefix "-" >=> T.uncons -> Just (k,v))
+  | k /= '-' =
+    pure (k, if T.null v then Nothing else Just v)
+parseShortOption _ = empty
 
 instance Scheme CliScheme where
   data Token CliScheme
