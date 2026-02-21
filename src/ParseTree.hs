@@ -8,6 +8,8 @@
 
 module ParseTree
   ( ParseTree(..)
+  , runTreeParser
+  , parseArguments
   ) where
 
 import           Control.Applicative
@@ -106,3 +108,18 @@ satiate tree = do
   case result of
     Just tree' -> satiate tree'
     Nothing    -> pure tree
+
+runTreeParser
+  :: Scheme s
+  => ParseTree s r -- ^ Parser expression tree
+  -> StreamHandler (Token s) r a
+  -> StreamState (Token s)
+  -> a
+runTreeParser = undefined
+
+parseArguments
+  :: Scheme s
+  => ParseTree s r
+  -> [Text]
+  -> Result Builder (r, [Text])
+parseArguments = undefined
