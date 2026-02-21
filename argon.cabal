@@ -29,6 +29,7 @@ library
       Resolve
       Result
       Scheme
+      Scheme.Unix
       Stream
       Text
       TextParser

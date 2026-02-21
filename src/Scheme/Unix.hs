@@ -1,0 +1,55 @@
+{-# LANGUAGE OverloadedStrings #-}
+
+module Scheme.Unix where
+
+import           Data.Char
+import           Data.List.NonEmpty (NonEmpty)
+import qualified Data.List.NonEmpty as NonEmpty
+import           Data.String
+import           Data.Text          (Text)
+import qualified Data.Text          as T
+
+import           Text
+
+--------------------------------------------------------------------------------
+-- User Interface Descriptions
+
+-- | A flag is a special argument that identifies a named option to
+-- the parser. Flags can have two forms: long flags start with a
+-- double dash (e.g. "--example") followed by a string while short
+-- flags start with only a single dash (e.g. "-e") and are identified
+-- by a single character.
+data Flag
+  = LongFlag Text
+  | ShortFlag Char
+  deriving (Eq, Ord, Show)
+
+instance IsString Flag where
+  fromString ('-':'-':name)
+    | not (null name) && all isAlphaNum name = LongFlag $ T.pack name
+  fromString ['-', c]
+    | isAlphaNum c = ShortFlag c
+  fromString s = error $ "not a valid flag: " <> s
+
+instance Render Flag where
+  render (LongFlag s)  = "--" <> render s
+  render (ShortFlag c) = "-" <> render c
+
+data OptionInfo = OptionInfo
+  { optFlags :: NonEmpty Flag -- | A list of flags that trigger this option.
+  , optHelp  :: Text -- | A description displayed in help output.
+  } deriving (Eq, Ord, Show)
+
+-- | Get a representative flag for this option (e.g. the first one).
+optHead :: OptionInfo -> Flag
+optHead = NonEmpty.head . optFlags
+
+data CommandInfo = CommandInfo
+  { cmdNames :: NonEmpty Text
+  , cmdHelp  :: Text -- | A description displayed in help output.
+  } deriving (Eq, Ord, Show)
+
+-- | Get a representative command name for this command (e.g. the
+-- first one).
+cmdHead :: CommandInfo -> Text
+cmdHead = NonEmpty.head . cmdNames
