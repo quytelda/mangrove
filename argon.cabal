@@ -28,6 +28,7 @@ library
       ParseTree
       Resolve
       Result
+      Scheme
       Stream
       Text
       TextParser
