@@ -46,6 +46,8 @@ data StreamState tok = StreamState
   , streamEscaped :: Bool   -- ^ Escaped mode
   } deriving (Eq, Show)
 
+-- | Continuations to be called for each situation a stream parser
+-- might encounter.
 data StreamHandler tok a r = StreamHandler
   { onSuccess     :: StreamState tok -> a -> r -- ^ Success Continuation
   , onEmpty       :: StreamState tok -> r -- ^ Empty continuation
@@ -90,7 +92,12 @@ instance MonadError Builder (StreamParser tok) where
     handler { onFailure = \_ err -> runStreamParser (recover err) handler state }
     state
 
--- | Enable or disable escaped parsing.
+-- | Enable or disable escaped parsing. When escaped parsing is
+-- enabled, we should treat all arguments as atomic units (i.e. as
+-- freeform parameters) regardless of any syntactic markings
+-- indicating otherwise. For example, in the unix-style scheme,
+-- "--example" would normally be interpreted as a long flag, but if
+-- escaping is on, it should be treated as a parameter instead.
 setEscaped :: Bool -> StreamParser tok ()
 setEscaped b = StreamParser $ \handler state ->
   onSuccess handler state { streamEscaped = b } ()
@@ -100,6 +107,8 @@ getEscaped :: StreamParser tok Bool
 getEscaped = StreamParser $ \handler state ->
   onSuccess handler state (streamEscaped state)
 
+-- | Escape normal parsing and signal that help information was
+-- requested.
 requestHelp :: StreamParser tok a
 requestHelp = StreamParser onHelpRequest
 
