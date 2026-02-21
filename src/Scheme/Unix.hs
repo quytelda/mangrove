@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Scheme.Unix where
@@ -9,7 +10,10 @@ import           Data.String
 import           Data.Text          (Text)
 import qualified Data.Text          as T
 
+import           ParseTree
+import           Scheme.Sub
 import           Text
+import           TextParser
 
 --------------------------------------------------------------------------------
 -- User Interface Descriptions
@@ -53,3 +57,11 @@ data CommandInfo = CommandInfo
 -- first one).
 cmdHead :: CommandInfo -> Text
 cmdHead = NonEmpty.head . cmdNames
+
+-- | A parser scheme for Unix-style CLI arguments.
+data UnixScheme r
+  = UnixParameter (TextParser r) -- ^ A standard freeform parameter
+  | UnixCommand CommandInfo (ParseTree UnixScheme r) -- ^ A subcommand with its own parse tree
+  | UnixOption OptionInfo Bool (ParseTree SubScheme r) -- ^ A named option that
+                                                       -- might support suboptions
+  deriving (Functor)
