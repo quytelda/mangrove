@@ -19,6 +19,7 @@ import           Data.Text            (Text)
 
 import           Resolve
 import           Result
+import           Scheme
 import           Stream
 import           Text
 
@@ -77,3 +78,31 @@ instance Resolve p => Resolve (ParseTree p) where
   -- Whether this is the best possible way to handle the situation is
   -- unclear. This avoids infinite loops, but might not be the
   -- expected behavior in some unforseen use-case.
+
+--------------------------------------------------------------------------------
+
+-- | 'feed' traverses the tree until it activates a parser that
+-- consumes input. When a subtree successfully consumes input, it is
+-- replaced with an updated subtree and the traversal ceases.
+feed :: Scheme s => ParseTree s r -> StreamParser (Token s) (ParseTree s r)
+feed EmptyNode = empty
+feed (ValueNode _) = empty
+feed (ParseNode parser) = ValueNode <$> activate parser
+feed (ProdNode f l r) =
+  (ProdNode f <$> feed l <*> pure r) <|>
+  (ProdNode f l <$> feed r)
+feed (SumNode l r) = feed l <|> feed r
+feed (ManyNode _ tree) =
+  ProdNode (:)
+  <$> feed tree
+  <*> pure (ManyNode False tree)
+
+-- | Repeatedly traverse the tree, each time activating the first
+-- parser that can consume available input, until no more input can be
+-- consumed.
+satiate :: Scheme s => ParseTree s r -> StreamParser (Token s) (ParseTree s r)
+satiate tree = do
+  result <- optional $ feed tree
+  case result of
+    Just tree' -> satiate tree'
+    Nothing    -> pure tree
