@@ -1,19 +1,25 @@
 {-# LANGUAGE DeriveFunctor     #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE ViewPatterns      #-}
 
 module Scheme.Unix where
 
+import           Control.Applicative
+import           Control.Monad
 import           Data.Char
-import           Data.List.NonEmpty (NonEmpty)
-import qualified Data.List.NonEmpty as NonEmpty
+import           Data.Functor
+import           Data.List.NonEmpty  (NonEmpty)
+import qualified Data.List.NonEmpty  as NonEmpty
 import           Data.String
-import           Data.Text          (Text)
-import qualified Data.Text          as T
+import           Data.Text           (Text)
+import qualified Data.Text           as T
 
 import           ParseTree
 import           Scheme
 import           Scheme.Sub
+import           Stream
 import           Text
 import           TextParser
 
@@ -67,6 +73,17 @@ data UnixScheme r
   | UnixOption OptionInfo Bool (ParseTree SubScheme r) -- ^ A named option that
                                                        -- might support suboptions
   deriving (Functor)
+
+parseUnixOption :: Alternative f => Text -> f (Flag, Maybe Text)
+parseUnixOption (T.stripPrefix "--" -> Just s)
+  | not (T.null s) =
+    case keyEqualsValue s of
+      Just (k, v) -> pure (LongFlag k, Just v)
+      Nothing     -> pure (LongFlag s, Nothing)
+parseUnixOption (T.stripPrefix "-" >=> T.uncons -> Just (k,v))
+  | k /= '-' =
+    pure (ShortFlag k, if T.null v then Nothing else Just v)
+parseUnixOption _ = empty
 
 instance Scheme UnixScheme where
   data Token UnixScheme
