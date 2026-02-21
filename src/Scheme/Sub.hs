@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies      #-}
 
 module Scheme.Sub where
 
@@ -25,3 +26,32 @@ instance Resolve SubScheme where
     throwError $ ExpectedError [TLB.fromText hint]
   resolve (SubOption key (TextParser hint _)) =
     throwError $ ExpectedError [TLB.fromText key <> "=" <> TLB.fromText hint]
+
+instance Scheme SubScheme where
+  data Token SubScheme
+    = SubAssoc Text Text -- ^ A "KEY=VALUE" argument
+    | SubArgument Text -- ^ A standard freeform argument
+    deriving (Eq, Show)
+
+  delimiter _ = ','
+
+  activate parser = do
+    next <- peek
+    escaped <- getEscaped
+    case (parser, keyEqualsValue next) of
+      (SubParameter tp, Nothing) ->
+        withContext (SubArgument next) $
+        pop_ *> runTextParser tp next
+      (SubOption _ _, Nothing) ->
+        empty
+      (SubOption key tp, Just (k,v))
+        | not escaped && key == k ->
+          withContext (SubAssoc k v) $
+          pop_ *> runTextParser tp v
+      (SubParameter tp, Just _)
+        | escaped ->
+          withContext (SubArgument next) $
+          pop_ *> runTextParser tp next
+        | otherwise ->
+          empty
+      _ -> empty
