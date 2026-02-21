@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies      #-}
 
 module Scheme.Unix where
 
@@ -11,6 +12,7 @@ import           Data.Text          (Text)
 import qualified Data.Text          as T
 
 import           ParseTree
+import           Scheme
 import           Scheme.Sub
 import           Text
 import           TextParser
@@ -65,3 +67,14 @@ data UnixScheme r
   | UnixOption OptionInfo Bool (ParseTree SubScheme r) -- ^ A named option that
                                                        -- might support suboptions
   deriving (Functor)
+
+instance Scheme UnixScheme where
+  data Token UnixScheme
+    = Argument Text -- ^ A freeform argument that is not an option or command
+    | Command Text -- ^ A subcommand
+    | Option Flag (Maybe Text) -- ^ A named option with optional bound argument
+    deriving (Eq, Show)
+
+  delimiter _ = ' '
+
+  activate = undefined
