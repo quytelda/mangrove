@@ -162,7 +162,18 @@ instance Scheme UnixScheme where
           (result, _) <- parseSubargs []
           pure result
 
-  activate _ = undefined
+  activate (Command info subtree) = do
+    -- Arguments should never be interpreted as commands when escaped.
+    getEscaped >>= guard . not
+
+    next <- peek
+    guard $ next `elem` cmdNames info
+      && not ("-" `T.isPrefixOf` next) -- not sure if this check is necessary?
+    pop_
+
+    withContext (UnixCommand next) $ do
+      satiate subtree
+      >>= resolveLifted
 
 instance Render (Token UnixScheme) where
   render (UnixArgument s)                      = render s
