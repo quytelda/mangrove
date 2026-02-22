@@ -95,6 +95,11 @@ instance Scheme UnixScheme where
 
   delimiter _ = ' '
 
+  parseSpecials = do
+    peekMaybe >>= \case
+      Just "--" -> pop_ *> setEscaped True
+      _         -> pure ()
+
   activate (UnixParameter tp) = do
     next <- peek
 
