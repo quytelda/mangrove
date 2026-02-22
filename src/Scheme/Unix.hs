@@ -120,6 +120,48 @@ instance Scheme UnixScheme where
 
     withContext (UnixArgument next) $
       pop_ *> runTextParser tp next
+
+  activate (Option info compound subtree) = do
+    -- Arguments should never be interpreted as options when escaped.
+    getEscaped >>= guard . not
+
+    (flag, mbound) <- peek >>= parseUnixOption
+    guard $ flag `elem` optFlags info
+    pop_
+
+    let splitArgs s = if compound
+                      then T.split (== ',') s
+                      else [s]
+        parseSubargs args =
+          runTreeParser subtree
+          StreamHandler
+          { onSuccess = \state result -> pure (result, streamContent state)
+          , onFailure = const throwError
+          , onEmpty = const $ throwError "empty"
+          , onHelpRequest = const requestHelp
+          }
+          (StreamState args [] (not compound))
+
+    withContext (UnixOption flag mbound) $ do
+      mnext <- peekMaybe
+      case (mbound, mnext) of
+        (Just argString, _) -> do
+          (result, leftover) <- parseSubargs (splitArgs argString)
+          forM_ leftover $ \arg ->
+            throwError $ "unrecognized subargument: " <> render arg
+          pure result
+        (_, Just argString) -> do
+          let args = splitArgs argString
+          (result, leftover) <- parseSubargs args
+          when (length args /= length leftover) $ do
+            forM_ leftover $ \arg ->
+              throwError $ "unrecognized subargument: " <> render arg
+            pop_
+          pure result
+        _ -> do
+          (result, _) <- parseSubargs []
+          pure result
+
   activate _ = undefined
 
 instance Render (Token UnixScheme) where
