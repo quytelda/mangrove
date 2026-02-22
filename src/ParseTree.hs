@@ -8,6 +8,7 @@
 
 module ParseTree
   ( ParseTree(..)
+  , satiate
   , runTreeParser
   , parseArguments
   ) where
