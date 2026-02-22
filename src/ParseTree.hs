@@ -104,6 +104,7 @@ feed (ManyNode _ tree) =
 -- consumed.
 satiate :: Scheme s => ParseTree s r -> StreamParser (Token s) (ParseTree s r)
 satiate tree = do
+  parseSpecials
   result <- optional $ feed tree
   case result of
     Just tree' -> satiate tree'
