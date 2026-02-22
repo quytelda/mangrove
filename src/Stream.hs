@@ -23,6 +23,8 @@ module Stream
   , getEscaped
 
     -- * Context
+  , getContext
+  , setContext
   , withContext
 
     -- * Stream
@@ -112,13 +114,23 @@ getEscaped = StreamParser $ \handler state ->
 requestHelp :: StreamParser tok a
 requestHelp = StreamParser onHelpRequest
 
--- | Push the given context onto the stack, perform a computation,
--- then pop it off. This assumes the computation doesn't modify the
--- stack.
+-- | Get a list representing the current context stack.
+getContext :: StreamParser tok [tok]
+getContext = StreamParser $ \handler state ->
+  onSuccess handler state (streamContext state)
+
+-- | Replace the context stack.
+setContext :: [tok] -> StreamParser tok ()
+setContext contexts = StreamParser $ \handler state ->
+  onSuccess handler state { streamContext = contexts } ()
+
+-- | Push the provided token onto the context stack, then perform some
+-- computation. Afterwards, the stack is restored to its prior state.
 withContext :: tok -> StreamParser tok a -> StreamParser tok a
-withContext context action = StreamParser $ \handler state ->
-  runStreamParser action handler
-  state { streamContext = context : streamContext state }
+withContext context action = do
+  oldContext <- getContext
+  setContext $ context : oldContext
+  action <* setContext oldContext
 
 --------------------------------------------------------------------------------
 
