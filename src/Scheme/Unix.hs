@@ -18,6 +18,7 @@ import           Data.Text            (Text)
 import qualified Data.Text            as T
 
 import           ParseTree
+import           Resolve
 import           Scheme
 import           Scheme.Sub
 import           Stream
@@ -74,6 +75,14 @@ data UnixScheme r
   | UnixOption OptionInfo Bool (ParseTree SubScheme r) -- ^ A named option that
                                                        -- might support suboptions
   deriving (Functor)
+
+instance Resolve UnixScheme where
+  resolve (UnixParameter (TextParser hint _)) =
+    throwError $ ExpectedError [render hint]
+  resolve (UnixOption info _ _) =
+    throwError $ ExpectedError [render (optHead info)]
+  resolve (UnixCommand info _) =
+    throwError $ ExpectedError [render (cmdHead info)]
 
 parseUnixOption :: Alternative f => Text -> f (Flag, Maybe Text)
 parseUnixOption (T.stripPrefix "--" -> Just s)
