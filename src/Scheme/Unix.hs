@@ -8,13 +8,14 @@ module Scheme.Unix where
 
 import           Control.Applicative
 import           Control.Monad
+import           Control.Monad.Except
 import           Data.Char
 import           Data.Functor
-import           Data.List.NonEmpty  (NonEmpty)
-import qualified Data.List.NonEmpty  as NonEmpty
+import           Data.List.NonEmpty   (NonEmpty)
+import qualified Data.List.NonEmpty   as NonEmpty
 import           Data.String
-import           Data.Text           (Text)
-import qualified Data.Text           as T
+import           Data.Text            (Text)
+import qualified Data.Text            as T
 
 import           ParseTree
 import           Scheme
@@ -94,4 +95,14 @@ instance Scheme UnixScheme where
 
   delimiter _ = ' '
 
-  activate = undefined
+  activate (UnixParameter tp) = do
+    next <- peek
+
+    -- Arguments that begin with a dash aren't considered free
+    -- arguments unless escaping is enabled.
+    escaped <- getEscaped
+    guard $ escaped || not ("-" `T.isPrefixOf` next)
+
+    withContext (Argument next) $
+      pop_ *> runTextParser tp next
+  activate _ = undefined
