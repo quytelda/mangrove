@@ -8,6 +8,7 @@ import           Data.Proxy
 
 import           Resolve
 import           Stream
+import           Text
 
 -- | A scheme is a system of parsers and tokens. It parses a sequence
 -- of arguments into tokens and values.
@@ -32,3 +33,7 @@ class Resolve s => Scheme (s :: Type -> Type) where
   -- it does apply, it consumes the relevant input and returns a
   -- result.
   activate :: s r -> StreamParser (Token s) r
+
+  -- | Render human-readable usage information for a particular
+  -- parser.
+  usageInfo :: s r -> Builder
