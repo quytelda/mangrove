@@ -70,18 +70,18 @@ cmdHead = NonEmpty.head . cmdNames
 
 -- | A parser scheme for Unix-style CLI arguments.
 data UnixScheme r
-  = UnixParameter (TextParser r) -- ^ A standard freeform parameter
-  | UnixCommand CommandInfo (ParseTree UnixScheme r) -- ^ A subcommand with its own parse tree
-  | UnixOption OptionInfo Bool (ParseTree SubScheme r) -- ^ A named option that
-                                                       -- might support suboptions
+  = Parameter (TextParser r) -- ^ A standard freeform parameter
+  | Command CommandInfo (ParseTree UnixScheme r) -- ^ A subcommand with its own parse tree
+  | Option OptionInfo Bool (ParseTree SubScheme r) -- ^ A named option that
+                                                   -- might support suboptions
   deriving (Functor)
 
 instance Resolve UnixScheme where
-  resolve (UnixParameter (TextParser hint _)) =
+  resolve (Parameter (TextParser hint _)) =
     throwError $ ExpectedError [render hint]
-  resolve (UnixOption info _ _) =
+  resolve (Option info _ _) =
     throwError $ ExpectedError [render (optHead info)]
-  resolve (UnixCommand info _) =
+  resolve (Command info _) =
     throwError $ ExpectedError [render (cmdHead info)]
 
 parseUnixOption :: Alternative f => Text -> f (Flag, Maybe Text)
@@ -97,9 +97,9 @@ parseUnixOption _ = empty
 
 instance Scheme UnixScheme where
   data Token UnixScheme
-    = Argument Text -- ^ A freeform argument that is not an option or command
-    | Command Text -- ^ A subcommand
-    | Option Flag (Maybe Text) -- ^ A named option with optional bound argument
+    = UnixArgument Text -- ^ A freeform argument that is not an option or command
+    | UnixCommand Text -- ^ A subcommand
+    | UnixOption Flag (Maybe Text) -- ^ A named option with optional bound argument
     deriving (Eq, Show)
 
   delimiter _ = ' '
@@ -109,7 +109,7 @@ instance Scheme UnixScheme where
       Just "--" -> pop_ *> setEscaped True
       _         -> pure ()
 
-  activate (UnixParameter tp) = do
+  activate (Parameter tp) = do
     next <- peek
 
     -- Arguments that begin with a dash aren't considered free
@@ -117,6 +117,6 @@ instance Scheme UnixScheme where
     escaped <- getEscaped
     guard $ escaped || not ("-" `T.isPrefixOf` next)
 
-    withContext (Argument next) $
+    withContext (UnixArgument next) $
       pop_ *> runTextParser tp next
   activate _ = undefined
