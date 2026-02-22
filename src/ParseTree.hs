@@ -8,6 +8,7 @@
 
 module ParseTree
   ( ParseTree(..)
+  , nullary
   , satiate
   , runTreeParser
   , parseArguments
@@ -81,6 +82,14 @@ instance Resolve p => Resolve (ParseTree p) where
   -- Whether this is the best possible way to handle the situation is
   -- unclear. This avoids infinite loops, but might not be the
   -- expected behavior in some unforseen use-case.
+
+nullary :: ParseTree s r -> Bool
+nullary EmptyNode         = True
+nullary (ValueNode _)     = True
+nullary (ParseNode _)     = False
+nullary (ProdNode _ l r)  = nullary l && nullary r
+nullary (SumNode l r)     = nullary l && nullary r
+nullary (ManyNode _ tree) = nullary tree
 
 --------------------------------------------------------------------------------
 
