@@ -20,6 +20,12 @@ class Scheme (s :: Type -> Type) where
   -- command @ls -a -l /var@ are separated by spaces.
   delimiter :: Proxy s -> Char
 
+  -- | Parse special control arguments that don't represent tokens in
+  -- the scheme, but control aspects of how parsing proceeds (e.g.
+  -- escaping).
+  parseSpecials :: StreamParser (Token s) ()
+  parseSpecials = pure ()
+
   -- | 'activate' tries to run a parser on the current input. If the
   -- parser doesn't apply, it consumes nothing and returns empty. If
   -- it does apply, it consumes the relevant input and returns a
