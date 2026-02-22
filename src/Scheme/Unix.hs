@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor     #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies      #-}
@@ -120,3 +121,11 @@ instance Scheme UnixScheme where
     withContext (UnixArgument next) $
       pop_ *> runTextParser tp next
   activate _ = undefined
+
+instance Render (Token UnixScheme) where
+  render (UnixArgument s)                      = render s
+  render (UnixCommand s)                       = render s
+  render (UnixOption f@(LongFlag _) (Just v))  = render f <> "=" <> render v
+  render (UnixOption f@(LongFlag _) Nothing)   = render f
+  render (UnixOption f@(ShortFlag _) (Just v)) = render f <> render v
+  render (UnixOption f@(ShortFlag _) Nothing)  = render f
