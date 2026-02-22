@@ -110,13 +110,26 @@ satiate tree = do
     Just tree' -> satiate tree'
     Nothing    -> pure tree
 
+-- | Satiate a 'ParseTree' with all the input it can consume, then
+-- attempt to evaluate it.
 runTreeParser
   :: Scheme s
   => ParseTree s r -- ^ Parser expression tree
   -> StreamHandler (Token s) r a
-  -> StreamState (Token s)
+  -> StreamState (Token s) -- ^ Initial state and input
   -> a
-runTreeParser = undefined
+runTreeParser tree handler state =
+  runStreamParser (satiate tree)
+  handler { onSuccess = evaluateResult }
+  state
+  where
+    evaluateResult _state tree' =
+      case resolve tree' of
+        Right value -> onSuccess handler _state value
+        Left err ->
+          case streamContent _state of
+            (token:_) -> onFailure handler _state $ "unexpected " <> render token
+            _         -> onFailure handler _state $ render err
 
 parseArguments
   :: Scheme s
