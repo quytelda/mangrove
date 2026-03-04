@@ -83,6 +83,18 @@ instance Resolve p => Resolve (ParseTree p) where
   -- unclear. This avoids infinite loops, but might not be the
   -- expected behavior in some unforseen use-case.
 
+instance Scheme s => Render (ParseTree s r) where
+  -- special cases
+  render (SumNode p (ValueNode _)) = "[" <> render p <> "]"
+
+  render EmptyNode                 = "EMPTY"
+  render (ValueNode _)             = "VALUE"
+  render (ParseNode parser)        = usageInfo parser
+  render (ProdNode _ l r)          = render l <> " " <> render r
+  render (SumNode l r)             = render l <> "|" <> render r
+  render (ManyNode False p)        = "[" <> render p <> "...]"
+  render (ManyNode True p)         = render p <> "..."
+
 nullary :: ParseTree s r -> Bool
 nullary EmptyNode         = True
 nullary (ValueNode _)     = True
