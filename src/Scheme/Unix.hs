@@ -175,6 +175,17 @@ instance Scheme UnixScheme where
       satiate subtree
       >>= resolveLifted
 
+  usageInfo (Parameter tp) = render $ parserHint tp
+  usageInfo (Option info _ subtree) =
+    render flag
+    <> if nullary subtree
+       then mempty
+       else separator <> render subtree
+    where flag = optHead info
+          separator = case flag of
+                        LongFlag _ -> "="
+                        _          -> ""
+
 instance Render (Token UnixScheme) where
   render (UnixArgument s)                      = render s
   render (UnixCommand s)                       = render s

@@ -57,6 +57,9 @@ instance Scheme SubScheme where
           empty
       _ -> empty
 
+  usageInfo (SubParameter tp)  = render $ parserHint tp
+  usageInfo (SubOption key tp) = render key <> "=" <> render (parserHint tp)
+
 instance Render (Token SubScheme) where
   render (SubAssoc key value) = render key <> "=" <> render value
   render (SubArgument value)  = render value
