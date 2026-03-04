@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor     #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies      #-}
 
@@ -55,3 +56,7 @@ instance Scheme SubScheme where
         | otherwise ->
           empty
       _ -> empty
+
+instance Render (Token SubScheme) where
+  render (SubAssoc key value) = render key <> "=" <> render value
+  render (SubArgument value)  = render value
