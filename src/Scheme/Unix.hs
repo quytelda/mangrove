@@ -136,8 +136,8 @@ instance Scheme UnixScheme where
           runTreeParser subtree
           StreamHandler
           { onSuccess = \state result -> pure (result, streamContent state)
-          , onFailure = const throwError
-          , onEmpty = const $ throwError "empty"
+          , onEmpty = flip throwWithContext "empty"
+          , onFailure = throwWithContext
           , onHelpRequest = const requestHelp
           }
           (StreamState args [] (not compound))
