@@ -1,7 +1,9 @@
 {-# LANGUAGE DeriveFunctor             #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE PolymorphicComponents     #-}
 {-# LANGUAGE TypeFamilies              #-}
 
@@ -26,6 +28,7 @@ module Stream
   , getContext
   , setContext
   , withContext
+  , throwWithContext
 
     -- * Stream
   , popMaybe
@@ -38,8 +41,11 @@ module Stream
 
 import           Control.Applicative
 import           Control.Monad.Except
+import qualified Data.List              as List
 import           Data.Text              (Text)
 import           Data.Text.Lazy.Builder (Builder)
+
+import           Text
 
 -- | The current state of a stream parser.
 data StreamState tok = StreamState
@@ -131,6 +137,20 @@ withContext context action = do
   oldContext <- getContext
   setContext $ context : oldContext
   action <* setContext oldContext
+
+renderError :: Render tok => [tok] -> Builder -> Builder
+renderError contexts err =
+  mconcat
+  $ List.intersperse ": "
+  $ reverse
+  $ err : map render contexts
+
+throwWithContext
+  :: (MonadError Builder m, Render tok)
+  => StreamState tok
+  -> Builder
+  -> m a
+throwWithContext state = throwError . renderError (streamContext state)
 
 --------------------------------------------------------------------------------
 
