@@ -32,7 +32,7 @@ option
   -> Text
   -> ParseTree SubScheme r
   -> ParseTree UnixScheme r
-option flags help = ParseNode . Option (OptionInfo flags help) False
+option flags help = ParseNode . Option (OptionInfo flags help)
 
 -- | Define a CLI option which takes no parameter and produces a pure value.
 optionPure
@@ -40,7 +40,7 @@ optionPure
   -> Text
   -> a
   -> ParseTree UnixScheme a
-optionPure flags help = ParseNode . Option (OptionInfo flags help) False . pure
+optionPure flags help = ParseNode . Option (OptionInfo flags help) . pure
 
 -- | Define a CLI option which produces 'True' if present and 'False'
 -- otherwise.

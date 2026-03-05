@@ -73,19 +73,19 @@ cmdHead = NonEmpty.head . cmdNames
 data UnixScheme r
   = Parameter (TextParser r) -- ^ A standard freeform parameter
   | Command CommandInfo (ParseTree UnixScheme r) -- ^ A subcommand with its own parse tree
-  | Option OptionInfo Bool (ParseTree SubScheme r) -- ^ A named option that
-                                                   -- might support suboptions
+  | Option OptionInfo (ParseTree SubScheme r) -- ^ A named option that
+                                              -- might support suboptions
   deriving (Functor)
 
 instance Valency UnixScheme where
-  valency (Parameter _)        = Just 1
-  valency (Command _ subtree)  = fmap (+1) (valency subtree)
-  valency (Option _ _ subtree) = fmap (max 2) (valency subtree)
+  valency (Parameter _)       = Just 1
+  valency (Command _ subtree) = fmap (+1) (valency subtree)
+  valency (Option _ subtree)  = fmap (max 2) (valency subtree)
 
 instance Resolve UnixScheme where
   resolve (Parameter (TextParser hint _)) =
     throwError $ ExpectedError [render hint]
-  resolve (Option info _ _) =
+  resolve (Option info _) =
     throwError $ ExpectedError [render (optHead info)]
   resolve (Command info _) =
     throwError $ ExpectedError [render (cmdHead info)]
@@ -128,7 +128,7 @@ instance Scheme UnixScheme where
     withContext (UnixArgument next) $
       pop_ *> runTextParser tp next
 
-  activate (Option info compound subtree) = do
+  activate (Option info subtree) = do
     -- Arguments should never be interpreted as options when escaped.
     getEscaped >>= guard . not
 
@@ -136,7 +136,7 @@ instance Scheme UnixScheme where
     guard $ flag `elem` optFlags info
     pop_
 
-    let splitArgs s = if compound
+    let splitArgs s = if multary subtree
                       then T.split (== ',') s
                       else [s]
         parseSubargs args =
@@ -147,7 +147,7 @@ instance Scheme UnixScheme where
           , onFailure = throwWithContext
           , onHelpRequest = const requestHelp
           }
-          (StreamState args [] (not compound))
+          (StreamState args [] (not $ supportsOptions subtree))
 
     withContext (UnixOption flag mbound) $ do
       mnext <- peekMaybe
@@ -185,7 +185,7 @@ instance Scheme UnixScheme where
   usageInfo (Parameter tp) = render $ parserHint tp
   usageInfo (Command info subtree) =
     "{" <> render (cmdHead info) <> " " <> render subtree <> "}"
-  usageInfo (Option info _ subtree) =
+  usageInfo (Option info subtree) =
     render flag
     <> if nullary subtree
        then mempty
@@ -211,7 +211,6 @@ addHelpOptions flags tree = addHelp $ go tree
     helpOption :: UnixScheme a
     helpOption = Option
                  (OptionInfo flags "Display help and usage information")
-                 False
                  HelpNode
 
     addHelp :: ParseTree UnixScheme a -> ParseTree UnixScheme a
@@ -224,3 +223,13 @@ addHelpOptions flags tree = addHelp $ go tree
     go (SumNode l r) = SumNode (go l) (go r)
     go (ManyNode require p) = ManyNode require (go p)
     go node = node
+
+supportsOptions :: ParseTree SubScheme r -> Bool
+supportsOptions EmptyNode = False
+supportsOptions HelpNode = False
+supportsOptions (ValueNode _) = False
+supportsOptions (ParseNode (SubParameter _)) = False
+supportsOptions (ParseNode (SubOption _ _)) = True
+supportsOptions (ProdNode _ l r) = supportsOptions l || supportsOptions r
+supportsOptions (SumNode l r) = supportsOptions l || supportsOptions r
+supportsOptions (ManyNode _ tree) = supportsOptions tree
