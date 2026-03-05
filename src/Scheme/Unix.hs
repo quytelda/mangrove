@@ -210,19 +210,19 @@ instance Render (Token UnixScheme) where
 -- | Automatically insert a help option at the top level of the tree
 -- and every subcommand tree.
 addHelpOptions :: NonEmpty Flag -> ParseTree UnixScheme r -> ParseTree UnixScheme r
-addHelpOptions flags tree = addHelp $ go tree
+addHelpOptions flags tree = ParseNode helpOption <|> go tree
   where
     helpOption :: UnixScheme a
-    helpOption = Option
-                 (OptionInfo flags "Display help and usage information")
-                 HelpNode
-
-    addHelp :: ParseTree UnixScheme a -> ParseTree UnixScheme a
-    addHelp _tree = ParseNode helpOption <|> _tree
+    helpOption =
+      Option
+      (OptionInfo flags "Display help and usage information")
+      HelpNode
 
     go :: ParseTree UnixScheme a -> ParseTree UnixScheme a
     go (ParseNode (Command info subtree)) =
-      ParseNode $ Command info $ addHelp $ go subtree
+      ParseNode
+      $ Command info
+      $ ParseNode helpOption <|> go subtree
     go (ProdNode f l r) = ProdNode f (go l) (go r)
     go (SumNode l r) = SumNode (go l) (go r)
     go (ManyNode require p) = ManyNode require (go p)
