@@ -33,6 +33,8 @@ import           Text
 data ParseTree (scheme :: Type -> Type) (r :: Type) where
   -- | Terminal node with no value (abstracts 'empty')
   EmptyNode :: ParseTree scheme r
+  -- | A control node that triggers a help request when reached
+  HelpNode :: ParseTree scheme r
   -- | A terminal node with a resolved value (abstracts 'pure')
   ValueNode :: r -> ParseTree scheme r
   -- | A parser awaiting input
@@ -46,6 +48,7 @@ data ParseTree (scheme :: Type -> Type) (r :: Type) where
 
 instance Functor p => Functor (ParseTree p) where
   fmap _ EmptyNode          = EmptyNode
+  fmap _ HelpNode           = HelpNode
   fmap f (ValueNode value)  = ValueNode $ f value
   fmap f (ParseNode parser) = ParseNode $ fmap f parser
   fmap f (ProdNode g l r)   = ProdNode (\u v -> f $ g u v) l r
@@ -65,6 +68,7 @@ instance Functor p => Alternative (ParseTree p) where
 
 instance Resolve p => Resolve (ParseTree p) where
   resolve EmptyNode          = throwError EmptyError
+  resolve HelpNode           = throwError EmptyError
   resolve (ValueNode value)  = pure value
   resolve (ParseNode parser) = resolve parser
   resolve (ProdNode f l r)   = f <$> resolve l <*> resolve r
@@ -88,6 +92,7 @@ instance Scheme s => Render (ParseTree s r) where
   render (SumNode p (ValueNode _)) = "[" <> render p <> "]"
 
   render EmptyNode                 = "EMPTY"
+  render HelpNode                  = "HELP"
   render (ValueNode _)             = "VALUE"
   render (ParseNode parser)        = usageInfo parser
   render (ProdNode _ l r)          = render l <> render (delimiter (Proxy @s)) <> render r
@@ -103,6 +108,7 @@ instance Scheme s => Render (ParseTree s r) where
 -- impossible input.
 nullary :: ParseTree s r -> Bool
 nullary EmptyNode         = True
+nullary HelpNode          = True
 nullary (ValueNode _)     = True
 nullary (ParseNode _)     = False
 nullary (ProdNode _ l r)  = nullary l && nullary r
@@ -116,6 +122,7 @@ nullary (ManyNode _ tree) = nullary tree
 -- replaced with an updated subtree and the traversal ceases.
 feed :: Scheme s => ParseTree s r -> StreamParser (Token s) (ParseTree s r)
 feed EmptyNode = empty
+feed HelpNode = requestHelp
 feed (ValueNode _) = empty
 feed (ParseNode parser) = ValueNode <$> activate parser
 feed (ProdNode f l r) =
