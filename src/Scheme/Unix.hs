@@ -147,7 +147,11 @@ instance Scheme UnixScheme where
           , onFailure = throwWithContext
           , onHelpRequest = const requestHelp
           }
-          (StreamState args [] (not $ supportsOptions subtree))
+          StreamState
+          { streamContent = args
+          , streamContext = []
+          , streamEscaped = not $ hasSubOptions subtree
+          }
 
     withContext (UnixOption flag mbound) $ do
       mnext <- peekMaybe
@@ -223,13 +227,3 @@ addHelpOptions flags tree = addHelp $ go tree
     go (SumNode l r) = SumNode (go l) (go r)
     go (ManyNode require p) = ManyNode require (go p)
     go node = node
-
-supportsOptions :: ParseTree SubScheme r -> Bool
-supportsOptions EmptyNode = False
-supportsOptions HelpNode = False
-supportsOptions (ValueNode _) = False
-supportsOptions (ParseNode (SubParameter _)) = False
-supportsOptions (ParseNode (SubOption _ _)) = True
-supportsOptions (ProdNode _ l r) = supportsOptions l || supportsOptions r
-supportsOptions (SumNode l r) = supportsOptions l || supportsOptions r
-supportsOptions (ManyNode _ tree) = supportsOptions tree

@@ -10,6 +10,7 @@ import           Control.Monad.Except
 import           Data.Text              (Text)
 import qualified Data.Text.Lazy.Builder as TLB
 
+import           ParseTree
 import           Resolve
 import           Scheme
 import           Stream
@@ -67,3 +68,13 @@ instance Scheme SubScheme where
 instance Render (Token SubScheme) where
   render (SubAssoc key value) = render key <> "=" <> render value
   render (SubArgument value)  = render value
+
+hasSubOptions :: ParseTree SubScheme r -> Bool
+hasSubOptions EmptyNode                    = False
+hasSubOptions HelpNode                     = False
+hasSubOptions (ValueNode _)                = False
+hasSubOptions (ParseNode (SubParameter _)) = False
+hasSubOptions (ParseNode (SubOption _ _))  = True
+hasSubOptions (ProdNode _ l r)             = hasSubOptions l || hasSubOptions r
+hasSubOptions (SumNode l r)                = hasSubOptions l || hasSubOptions r
+hasSubOptions (ManyNode _ tree)            = hasSubOptions tree
