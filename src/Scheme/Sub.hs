@@ -15,12 +15,16 @@ import           Scheme
 import           Stream
 import           Text
 import           TextParser
+import           Valency
 
 -- | Parsers for subarguments of an option (e.g. @--option key=value@).
 data SubScheme r
   = SubParameter (TextParser r) -- ^ Parses freeform arguments
   | SubOption Text (TextParser r) -- ^ Suboptions have the form "KEY=VALUE"
   deriving (Functor)
+
+instance Valency SubScheme where
+  valency _ = Just 1
 
 instance Resolve SubScheme where
   resolve (SubParameter (TextParser hint _)) =

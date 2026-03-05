@@ -24,6 +24,7 @@ import           Scheme.Sub
 import           Stream
 import           Text
 import           TextParser
+import           Valency
 
 --------------------------------------------------------------------------------
 -- User Interface Descriptions
@@ -75,6 +76,11 @@ data UnixScheme r
   | Option OptionInfo Bool (ParseTree SubScheme r) -- ^ A named option that
                                                    -- might support suboptions
   deriving (Functor)
+
+instance Valency UnixScheme where
+  valency (Parameter _)        = Just 1
+  valency (Command _ subtree)  = fmap (+1) (valency subtree)
+  valency (Option _ _ subtree) = fmap (max 2) (valency subtree)
 
 instance Resolve UnixScheme where
   resolve (Parameter (TextParser hint _)) =

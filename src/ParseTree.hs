@@ -25,6 +25,7 @@ import           Result
 import           Scheme
 import           Stream
 import           Text
+import           Valency
 
 -- | 'ParseTree scheme r' is an expression tree composed of parsers
 -- from scheme 'scheme' which evaluates to a value of type 'r' when
@@ -64,6 +65,21 @@ instance Functor p => Alternative (ParseTree p) where
   (<|>) = SumNode
   many = ManyNode False
   some = ManyNode True
+
+instance Valency s => Valency (ParseTree s) where
+  valency EmptyNode         = Just 0
+  valency HelpNode          = Just 0
+  valency (ValueNode _)     = Just 0
+  valency (ParseNode p)     = valency p
+  valency (ProdNode _ l r)  = (+) <$> valency l <*> valency r
+  valency (SumNode l r)     = max <$> valency l <*> valency r
+  valency (ManyNode _ tree) =
+    case valency tree of
+      Just n | n <= 0 -> Just 0
+      _               -> Nothing -- i.e. infinity
+  -- In the above case of 'ManyNode _ p', a ManyNode can accept an
+  -- arbitrary number of parameters, so the maximum valency is either
+  -- infinite or zero depending on whether the valency of 'p' is zero.
 
 instance Resolve p => Resolve (ParseTree p) where
   resolve EmptyNode          = throwError EmptyError
