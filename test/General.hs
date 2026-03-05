@@ -11,7 +11,7 @@ import           Test.Hspec
 import           Argon
 import           ParseTree
 import           Result
-import           Scheme.Cli
+import           Scheme.Unix
 import           Text
 
 import           TestParsers
@@ -24,14 +24,11 @@ optionSpec = do
   it "parses short options" $ do
     parseArguments opt_e_unit ["-e"]
       `shouldBe` Success ((), [])
-  it "parses short option groups" $ do
-    parseArguments (opt_e_unit *> opt_f_unit) ["-ef"]
-      `shouldBe` Success ((), [])
 
   it "parses options in any order" $ do
-    parseArguments (opt_e_unit *> opt_f_unit) ["-ef"]
+    parseArguments (opt_e_unit *> opt_f_unit) ["-e", "-f"]
       `shouldBe` Success ((), [])
-    parseArguments (opt_e_unit *> opt_f_unit) ["-fe"]
+    parseArguments (opt_e_unit *> opt_f_unit) ["-f", "-e"]
       `shouldBe` Success ((), [])
 
   describe "switches" $ do
@@ -49,10 +46,14 @@ optionSpec = do
       it "parses the argument" $ do
         parseArguments opt_example_param ["--example=qwer"]
           `shouldBe` Success ("qwer", [])
+        parseArguments opt_e_param ["-eqwer"]
+          `shouldBe` Success ("qwer", [])
     context "when no argument is expected" $ do
       it "parsing fails" $ do
         parseArguments opt_example_unit ["--example=qwer"]
-          `shouldBe` Failure "--example option: unrecognized subargument: qwer"
+          `shouldBe` Failure "--example=qwer: unrecognized subargument: qwer"
+        parseArguments opt_e_unit ["-eqwer"]
+          `shouldBe` Failure "-eqwer: unrecognized subargument: qwer"
 
   context "when no argument is expected" $ do
     context "when an argument is available" $ do
@@ -68,12 +69,12 @@ optionSpec = do
   context "when an argument is required" $ do
     it "renders with parameter hint" $ do
       render opt_example_param `shouldBe` "--example=STRING"
-      render opt_e_param `shouldBe` "-e STRING"
+      render opt_e_param `shouldBe` "-eSTRING"
 
     context "when no argument is provided" $ do
       it "fails to parse" $ do
         parseArguments opt_example_param ["--example"]
-          `shouldBe` Failure "--example option: expected: STRING"
+          `shouldBe` Failure "--example: expected: STRING"
     context "when an argument is provided" $ do
       it "the argument is consumed" $ do
         parseArguments opt_example_param ["--example", "qwer"]
@@ -139,12 +140,7 @@ generalSpec = do
   context "when not all input can be consumed" $ do
     it "returns unconsumed arguments" $ do
       parseArguments param_text ["asdf", "qwer"]
-        `shouldBe` Success ("asdf", [Argument "qwer"])
-
-  context "when the first token is a bound argument" $ do
-    it "fails without consuming any tokens" $ do
-      runParseTree param_text [Bound "asdf"]
-        `shouldBe` Failure "unexpected subargument \"asdf\""
+        `shouldBe` Success ("asdf", ["qwer"])
 
 spec :: Spec
 spec = do

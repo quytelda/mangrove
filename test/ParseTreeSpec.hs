@@ -8,7 +8,7 @@ import           Control.Applicative
 import           Data.Text           (Text)
 import           Test.Hspec
 
-import           Scheme.Cli
+import           Scheme.Unix
 import           ParseTree
 import           Result
 
@@ -18,21 +18,21 @@ spec :: Spec
 spec = do
   describe "pure" $ do
     it "resolves to the given value" $ do
-      parseArguments (ValueNode 'a' :: ParseTree CliScheme Char) []
+      parseArguments (ValueNode 'a' :: ParseTree UnixScheme Char) []
         `shouldBe` Success ('a', [])
 
   describe "liftA2" $ do
     it "combines two values" $ do
-      parseArguments (liftA2 (+) (pure 1) (pure 2) :: ParseTree CliScheme Int) []
+      parseArguments (liftA2 (+) (pure 1) (pure 2) :: ParseTree UnixScheme Int) []
         `shouldBe` Success (3, [])
 
       -- should be equivalent
-      parseArguments ((+) <$> pure 1 <*> pure 2 :: ParseTree CliScheme Int) []
+      parseArguments ((+) <$> pure 1 <*> pure 2 :: ParseTree UnixScheme Int) []
         `shouldBe` Success (3, [])
 
   describe "empty" $ do
     it "doesn't resolve to any value" $ do
-      parseArguments (empty :: ParseTree CliScheme Char) []
+      parseArguments (empty :: ParseTree UnixScheme Char) []
         `shouldBe` Failure "empty"
 
   describe "(<|>)" $ do
@@ -43,7 +43,7 @@ spec = do
 
         -- When the right child is also resolvable, it should be
         -- ignored.
-        parseArguments (pure "asdf" <|> pure "qwer" :: ParseTree CliScheme Text) []
+        parseArguments (pure "asdf" <|> pure "qwer" :: ParseTree UnixScheme Text) []
           `shouldBe` Success ("asdf", [])
 
     context "when the left child is unresolvable" $ do
@@ -54,9 +54,9 @@ spec = do
     context "when one child is triggered" $ do
       it "prunes the other child" $ do
         parseArguments (opt_e_unit <|> opt_f_unit) ["-e", "-f"]
-          `shouldBe` Success ((), [ShortOption 'f'])
+          `shouldBe` Success ((), ["-f"])
         parseArguments (opt_e_unit <|> opt_f_unit) ["-f", "-e"]
-          `shouldBe` Success ((), [ShortOption 'e'])
+          `shouldBe` Success ((), ["-e"])
 
   describe "many" $ do
     it "parses multiple instances" $ do
@@ -64,7 +64,7 @@ spec = do
         `shouldBe` Success (["asdf", "qwer", "zxcv"], [])
     it "parses zero instances" $ do
       parseArguments (many opt_e_param) ["blah"]
-        `shouldBe` Success ([], [Argument "blah"])
+        `shouldBe` Success ([], ["blah"])
 
     it "handles compound trees" $ do
       let tree = (opt_f_unit *> opt_e_param) <|> opt_example_param
@@ -103,12 +103,12 @@ spec = do
     it "parses exactly one instance" $ do
       parseArguments (optional opt_e_param) ["-e", "asdf", "-e", "qwer", "-e", "zxcv"]
         `shouldBe` Success ( Just "asdf"
-                         , [ ShortOption 'e'
-                           , Argument "qwer"
-                           , ShortOption 'e'
-                           , Argument "zxcv"
+                         , [ "-e"
+                           , "qwer"
+                           , "-e"
+                           , "zxcv"
                            ]
                          )
     it "parses zero instances" $ do
       parseArguments (optional opt_e_param) ["blah"]
-        `shouldBe` Success (Nothing, [Argument "blah"])
+        `shouldBe` Success (Nothing, ["blah"])

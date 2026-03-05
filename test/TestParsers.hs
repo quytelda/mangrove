@@ -9,7 +9,7 @@ import           Data.Text           (Text)
 import           Test.Hspec
 
 import           Argon
-import           Scheme.Cli
+import           Scheme.Unix
 import           ParseTree
 import           Result
 
