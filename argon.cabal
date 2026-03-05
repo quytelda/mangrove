@@ -35,6 +35,7 @@ library
       Stream
       Text
       TextParser
+      Valency
   other-modules:
       Paths_argon
   autogen-modules:
