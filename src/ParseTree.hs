@@ -95,6 +95,12 @@ instance Scheme s => Render (ParseTree s r) where
   render (ManyNode False p)        = "[" <> render p <> "...]"
   render (ManyNode True p)         = render p <> "..."
 
+-- | Identify trees that do not accept any input.
+--
+-- A "nullary" tree contains no parsers (i.e. no 'ParseNode'
+-- children), and thus cannot accept any input. This does NOT include
+-- trees that accept input optionally or trees that only accept
+-- impossible input.
 nullary :: ParseTree s r -> Bool
 nullary EmptyNode         = True
 nullary (ValueNode _)     = True
