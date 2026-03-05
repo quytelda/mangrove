@@ -113,9 +113,11 @@ instance Scheme UnixScheme where
     next <- peek
 
     -- Arguments that begin with a dash aren't considered free
-    -- arguments unless escaping is enabled.
+    -- arguments unless escaping is enabled. However, the string "-"
+    -- is always accepted since this is commonly used to represent
+    -- stdin.
     escaped <- getEscaped
-    guard $ escaped || not ("-" `T.isPrefixOf` next)
+    guard $ escaped || next == "-" || not ("-" `T.isPrefixOf` next)
 
     withContext (UnixArgument next) $
       pop_ *> runTextParser tp next
