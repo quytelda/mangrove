@@ -176,6 +176,8 @@ instance Scheme UnixScheme where
       >>= resolveLifted
 
   usageInfo (Parameter tp) = render $ parserHint tp
+  usageInfo (Command info subtree) =
+    "{" <> render (cmdHead info) <> " " <> render subtree <> "}"
   usageInfo (Option info _ subtree) =
     render flag
     <> if nullary subtree
