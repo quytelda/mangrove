@@ -194,3 +194,25 @@ instance Render (Token UnixScheme) where
   render (UnixOption f@(LongFlag _) Nothing)   = render f
   render (UnixOption f@(ShortFlag _) (Just v)) = render f <> render v
   render (UnixOption f@(ShortFlag _) Nothing)  = render f
+
+-- | Automatically insert a help option at the top level of the tree
+-- and every subcommand tree.
+addHelpOptions :: NonEmpty Flag -> ParseTree UnixScheme r -> ParseTree UnixScheme r
+addHelpOptions flags tree = addHelp $ go tree
+  where
+    helpOption :: UnixScheme a
+    helpOption = Option
+                 (OptionInfo flags "Display help and usage information")
+                 False
+                 HelpNode
+
+    addHelp :: ParseTree UnixScheme a -> ParseTree UnixScheme a
+    addHelp _tree = ParseNode helpOption <|> _tree
+
+    go :: ParseTree UnixScheme a -> ParseTree UnixScheme a
+    go (ParseNode (Command info subtree)) =
+      ParseNode $ Command info $ addHelp $ go subtree
+    go (ProdNode f l r) = ProdNode f (go l) (go r)
+    go (SumNode l r) = SumNode (go l) (go r)
+    go (ManyNode require p) = ManyNode require (go p)
+    go node = node
