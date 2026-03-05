@@ -11,7 +11,6 @@ import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.Except
 import           Data.Char
-import           Data.Functor
 import           Data.List.NonEmpty   (NonEmpty)
 import qualified Data.List.NonEmpty   as NonEmpty
 import           Data.String

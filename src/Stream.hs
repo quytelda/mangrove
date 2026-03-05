@@ -43,7 +43,6 @@ import           Control.Applicative
 import           Control.Monad.Except
 import qualified Data.List              as List
 import           Data.Text              (Text)
-import           Data.Text.Lazy.Builder (Builder)
 
 import           Text
 

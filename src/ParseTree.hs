@@ -17,7 +17,6 @@ module ParseTree
 import           Control.Applicative
 import           Control.Monad.Except
 import           Data.Kind
-import qualified Data.List            as List
 import           Data.Proxy
 import           Data.Text            (Text)
 
