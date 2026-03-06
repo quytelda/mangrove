@@ -1,6 +1,6 @@
-name:                argon
+name:                mangrove
 version:             0.1.0.0
-github:              "quytelda/argon"
+github:              "quytelda/mangrove"
 license:             BSD-3-Clause
 author:              "Quytelda Kahja"
 maintainer:          "quytelda@tamalin.org"
@@ -17,7 +17,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/quytelda/argon#readme>
+description:         Please see the README on GitHub at <https://github.com/quytelda/mangrove#readme>
 
 dependencies:
 - base >= 4.7 && < 5
@@ -41,7 +41,7 @@ library:
   source-dirs: src
 
 tests:
-  argon-test:
+  mangrove-test:
     main:                Main.hs
     source-dirs:         test
     ghc-options:
@@ -49,5 +49,5 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - argon
+    - mangrove
     - hspec >= 2.9 && < 3

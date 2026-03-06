@@ -4,11 +4,11 @@ cabal-version: 2.2
 --
 -- see: https://github.com/sol/hpack
 
-name:           argon
+name:           mangrove
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/quytelda/argon#readme>
-homepage:       https://github.com/quytelda/argon#readme
-bug-reports:    https://github.com/quytelda/argon/issues
+description:    Please see the README on GitHub at <https://github.com/quytelda/mangrove#readme>
+homepage:       https://github.com/quytelda/mangrove#readme
+bug-reports:    https://github.com/quytelda/mangrove/issues
 author:         Quytelda Kahja
 maintainer:     quytelda@tamalin.org
 copyright:      Copyright 2023 Quytelda Kahja
@@ -21,7 +21,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/quytelda/argon
+  location: https://github.com/quytelda/mangrove
 
 library
   exposed-modules:
@@ -37,9 +37,9 @@ library
       Unix
       Valency
   other-modules:
-      Paths_argon
+      Paths_mangrove
   autogen-modules:
-      Paths_argon
+      Paths_mangrove
   hs-source-dirs:
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
@@ -51,7 +51,7 @@ library
     , transformers >=0.6.1.0
   default-language: Haskell2010
 
-test-suite argon-test
+test-suite mangrove-test
   type: exitcode-stdio-1.0
   main-is: Main.hs
   other-modules:
@@ -59,17 +59,17 @@ test-suite argon-test
       ParseTreeSpec
       Spec
       TestParsers
-      Paths_argon
+      Paths_mangrove
   autogen-modules:
-      Paths_argon
+      Paths_mangrove
   hs-source-dirs:
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      argon
-    , base >=4.7 && <5
+      base >=4.7 && <5
     , containers >=0.6.7
     , hspec >=2.9 && <3
+    , mangrove
     , mtl >=2.3.1 && <3
     , text >=2.0.2 && <3
     , transformers >=0.6.1.0

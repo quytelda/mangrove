@@ -1,4 +1,4 @@
-# Changelog for `argon`
+# Changelog for `mangrove`
 
 All notable changes to this project will be documented in this file.
 
