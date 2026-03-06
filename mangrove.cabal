@@ -25,17 +25,17 @@ source-repository head
 
 library
   exposed-modules:
-      ParseTree
-      Resolve
-      Result
-      Scheme
-      Scheme.Sub
-      Scheme.Unix
-      Stream
-      Text
-      TextParser
-      Unix
-      Valency
+      Mangrove.ParseTree
+      Mangrove.Resolve
+      Mangrove.Result
+      Mangrove.Scheme
+      Mangrove.Scheme.Sub
+      Mangrove.Scheme.Unix
+      Mangrove.Stream
+      Mangrove.Text
+      Mangrove.TextParser
+      Mangrove.Unix
+      Mangrove.Valency
   other-modules:
       Paths_mangrove
   autogen-modules:
@@ -56,7 +56,7 @@ test-suite mangrove-test
   main-is: Main.hs
   other-modules:
       General
-      ParseTreeSpec
+      Mangrove.ParseTreeSpec
       Spec
       TestParsers
       Paths_mangrove

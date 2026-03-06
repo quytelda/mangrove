@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE ViewPatterns      #-}
 
-module TextParser
+module Mangrove.TextParser
   ( TextParser(..)
   , runTextParser
   , DefaultParser(..)
@@ -18,7 +18,7 @@ import qualified Data.Text              as T
 import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Read         as TR
 
-import           Text
+import           Mangrove.Text
 
 data TextParser r = TextParser
   { parserHint :: Text

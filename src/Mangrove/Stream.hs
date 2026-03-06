@@ -15,7 +15,7 @@ License     : BSD-3-Clause
 Provides a basic stream-parsing monad for parsing a token sequences
 with error handling and context management.
 -}
-module Stream
+module Mangrove.Stream
   ( -- * Types
     StreamParser(..)
   , StreamHandler(..)
@@ -44,7 +44,7 @@ import           Control.Monad.Except
 import qualified Data.List              as List
 import           Data.Text              (Text)
 
-import           Text
+import           Mangrove.Text
 
 -- | The current state of a stream parser.
 data StreamState tok = StreamState

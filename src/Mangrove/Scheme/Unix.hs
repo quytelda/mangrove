@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE ViewPatterns      #-}
 
-module Scheme.Unix where
+module Mangrove.Scheme.Unix where
 
 import           Control.Applicative
 import           Control.Monad
@@ -17,15 +17,15 @@ import           Data.String
 import           Data.Text            (Text)
 import qualified Data.Text            as T
 
-import           ParseTree
-import           Resolve
-import           Scheme
-import qualified Scheme.Sub           as Sub
-import           Scheme.Sub           (SubScheme)
-import           Stream
-import           Text
-import           TextParser
-import           Valency
+import           Mangrove.ParseTree
+import           Mangrove.Resolve
+import           Mangrove.Scheme
+import qualified Mangrove.Scheme.Sub           as Sub
+import           Mangrove.Scheme.Sub           (SubScheme)
+import           Mangrove.Stream
+import           Mangrove.Text
+import           Mangrove.TextParser
+import           Mangrove.Valency
 
 --------------------------------------------------------------------------------
 -- User Interface Descriptions

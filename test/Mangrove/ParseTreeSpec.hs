@@ -2,15 +2,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications  #-}
 
-module ParseTreeSpec (spec) where
+module Mangrove.ParseTreeSpec (spec) where
 
 import           Control.Applicative
 import           Data.Text           (Text)
 import           Test.Hspec
 
-import           Scheme.Unix
-import           ParseTree
-import           Result
+import           Mangrove.Scheme.Unix
+import           Mangrove.ParseTree
+import           Mangrove.Result
 
 import           TestParsers
 

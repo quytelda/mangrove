@@ -1,14 +1,14 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeFamilies   #-}
 
-module Scheme where
+module Mangrove.Scheme where
 
 import           Data.Kind
 import           Data.Proxy
 
-import           Resolve
-import           Stream
-import           Text
+import           Mangrove.Resolve
+import           Mangrove.Stream
+import           Mangrove.Text
 
 -- | A scheme is a system of parsers and tokens. It parses a sequence
 -- of arguments into tokens and values.

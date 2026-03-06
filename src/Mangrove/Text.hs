@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE ViewPatterns      #-}
 
-module Text
+module Mangrove.Text
   ( -- * Text Rendering
     Render(..)
   , renderLazyText

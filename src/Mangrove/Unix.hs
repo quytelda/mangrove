@@ -1,15 +1,15 @@
-module Unix where
+module Mangrove.Unix where
 
 import           Control.Applicative
 import           Data.List.NonEmpty  (NonEmpty)
 import           Data.Text           (Text)
 
-import           ParseTree
-import qualified Scheme.Sub          as Sub
-import           Scheme.Sub          (SubScheme)
-import qualified Scheme.Unix         as Unix
-import           Scheme.Unix         (UnixScheme)
-import           TextParser
+import           Mangrove.ParseTree
+import qualified Mangrove.Scheme.Sub          as Sub
+import           Mangrove.Scheme.Sub          (SubScheme)
+import qualified Mangrove.Scheme.Unix         as Unix
+import           Mangrove.Scheme.Unix         (UnixScheme)
+import           Mangrove.TextParser
 
 type UnixParser = ParseTree UnixScheme
 

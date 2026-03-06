@@ -3,20 +3,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies      #-}
 
-module Scheme.Sub where
+module Mangrove.Scheme.Sub where
 
 import           Control.Applicative
 import           Control.Monad.Except
 import           Data.Text              (Text)
 import qualified Data.Text.Lazy.Builder as TLB
 
-import           ParseTree
-import           Resolve
-import           Scheme
-import           Stream
-import           Text
-import           TextParser
-import           Valency
+import           Mangrove.ParseTree
+import           Mangrove.Resolve
+import           Mangrove.Scheme
+import           Mangrove.Stream
+import           Mangrove.Text
+import           Mangrove.TextParser
+import           Mangrove.Valency
 
 -- | Parsers for subarguments of an option (e.g. @--option key=value@).
 data SubScheme r

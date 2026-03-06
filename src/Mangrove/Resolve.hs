@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Resolve
+module Mangrove.Resolve
   ( -- * Resolution
     ResolveError(..)
   , sumResults
@@ -12,7 +12,7 @@ module Resolve
 import           Control.Monad.Except
 import           Data.Bifunctor
 import qualified Data.List            as List
-import           Text
+import           Mangrove.Text
 
 -- | Resolving an object might fail if not enough input has been
 -- provided or the result depends on an unresolvable value (e.g.

@@ -8,10 +8,10 @@ import           Data.Text           (Text)
 
 import           Test.Hspec
 
-import           ParseTree
-import           Result
-import           Scheme.Unix
-import           Unix
+import           Mangrove.ParseTree
+import           Mangrove.Result
+import           Mangrove.Scheme.Unix
+import           Mangrove.Unix
 
 opt_example_unit :: UnixParser ()
 opt_example_unit = option [LongFlag "example"] "" $ pure ()

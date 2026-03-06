@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeFamilies        #-}
 
-module ParseTree
+module Mangrove.ParseTree
   ( ParseTree(..)
   , nullary
   , AcceptsParameters(..)
@@ -22,13 +22,13 @@ import           Data.Kind
 import           Data.Proxy
 import           Data.Text            (Text)
 
-import           Resolve
-import           Result
-import           Scheme
-import           Stream
-import           Text
-import           TextParser
-import           Valency
+import           Mangrove.Resolve
+import           Mangrove.Result
+import           Mangrove.Scheme
+import           Mangrove.Stream
+import           Mangrove.Text
+import           Mangrove.TextParser
+import           Mangrove.Valency
 
 -- | 'ParseTree scheme r' is an expression tree composed of parsers
 -- from scheme 'scheme' which evaluates to a value of type 'r' when

@@ -8,10 +8,10 @@ import           Data.Either
 
 import           Test.Hspec
 
-import           ParseTree
-import           Result
-import           Scheme.Unix
-import           Text
+import           Mangrove.ParseTree
+import           Mangrove.Result
+import           Mangrove.Scheme.Unix
+import           Mangrove.Text
 
 import           TestParsers
 
