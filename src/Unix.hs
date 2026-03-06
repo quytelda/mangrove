@@ -11,7 +11,7 @@ import qualified Scheme.Unix         as Unix
 import           Scheme.Unix         (UnixScheme)
 import           TextParser
 
-type CliParser = ParseTree UnixScheme
+type UnixParser = ParseTree UnixScheme
 
 -- | Define a command line parameter (i.e. a non-option).
 unixparameter :: TextParser a -> ParseTree UnixScheme a
