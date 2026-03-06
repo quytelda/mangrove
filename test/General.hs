@@ -8,7 +8,6 @@ import           Data.Either
 
 import           Test.Hspec
 
-import           Argon
 import           ParseTree
 import           Result
 import           Scheme.Unix

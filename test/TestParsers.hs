@@ -8,10 +8,10 @@ import           Data.Text           (Text)
 
 import           Test.Hspec
 
-import           Argon
-import           Scheme.Unix
 import           ParseTree
 import           Result
+import           Scheme.Unix
+import           Unix
 
 opt_example_unit :: CliParser ()
 opt_example_unit = option [LongFlag "example"] "" $ pure ()

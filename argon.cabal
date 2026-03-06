@@ -25,7 +25,6 @@ source-repository head
 
 library
   exposed-modules:
-      Argon
       ParseTree
       Resolve
       Result
@@ -35,6 +34,7 @@ library
       Stream
       Text
       TextParser
+      Unix
       Valency
   other-modules:
       Paths_argon
