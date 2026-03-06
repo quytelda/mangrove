@@ -4,13 +4,14 @@
 module TestParsers where
 
 import           Control.Applicative
-import           Data.Text           (Text)
+import           Data.Text            (Text)
 
 import           Test.Hspec
 
 import           Mangrove.ParseTree
 import           Mangrove.Result
 import           Mangrove.Scheme.Unix
+import           Mangrove.TextParser
 import           Mangrove.Unix
 
 opt_example_unit :: UnixParser ()
@@ -46,6 +47,21 @@ command_asdf = command ["asdf"] "" $ pure "qwer"
 
 cmd_example_tree :: UnixParser Text
 cmd_example_tree = command ["example"] "" $ command ["asdf"] "" $ pure "qwer"
+
+opt_example_pair :: UnixParser (Int, Int)
+opt_example_pair = option ["--example"] "" $ (,)
+  <$> defaultParameter
+  <*> defaultParameter
+
+opt_example_subopt :: UnixParser Text
+opt_example_subopt =
+  option ["--example"] "" $ suboption "value" defaultParser
+
+opt_home_create :: UnixParser (Text, Bool)
+opt_home_create =
+  option ["--home"] "Specify home directory and whether to create it" $ (,)
+  <$> subparameter defaultParser
+  <*> (suboption "create" defaultParser <|> pure False)
 
 testParser :: (Eq r, Show r) => UnixParser r -> [Text] -> r -> Expectation
 testParser tree args expect = parseArguments tree args `shouldBe` Success (expect, [])

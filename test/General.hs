@@ -92,6 +92,31 @@ optionSpec = do
         parseArguments opt_example_param_optional ["--example", "qwer"]
           `shouldBe` Success ("qwer", [])
 
+  describe "compound options" $ do
+    context "when the subtree accepts multiple arguments" $ do
+      it "splits the input by delimiter" $ do
+        parseArguments opt_example_pair ["--example", "1,3"]
+          `shouldBe` Success ((1,3), [])
+    context "when the subtree can't accept multiple argument" $ do
+      it "doesn't split the input by delimiter" $ do
+        parseArguments opt_example_param ["--example", "1,3"]
+          `shouldBe` Success ("1,3", [])
+        parseArguments opt_example_param_optional ["--example", "1,3"]
+          `shouldBe` Success ("1,3", [])
+
+    context "when the subtree accepts suboptions" $ do
+      it "parses key=value pairs" $ do
+        parseArguments opt_example_subopt ["--example", "value=asdf"]
+          `shouldBe` Success ("asdf", [])
+        parseArguments opt_example_subopt ["--example=value=asdf"]
+          `shouldBe` Success ("asdf", [])
+    context "when the subtree can't accept suboptions" $ do
+      it "doesn't parse key=value pairs" $ do
+        parseArguments opt_example_param ["--example", "value=asdf"]
+          `shouldBe` Success ("value=asdf", [])
+        parseArguments opt_example_param ["--example=value=asdf"]
+          `shouldBe` Success ("value=asdf", [])
+
   describe "help options" $ do
     context "when a help option is present" $ do
       it "requests help" $ do
