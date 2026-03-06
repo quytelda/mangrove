@@ -1,7 +1,9 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeFamilies   #-}
 
-module Mangrove.Scheme where
+module Mangrove.Scheme
+  ( Scheme(..)
+  ) where
 
 import           Data.Kind
 import           Data.Proxy

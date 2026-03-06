@@ -2,7 +2,9 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Mangrove.Result where
+module Mangrove.Result
+  ( Result(..)
+  ) where
 
 import           Control.Monad.Except
 

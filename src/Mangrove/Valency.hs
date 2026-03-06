@@ -1,4 +1,7 @@
-module Mangrove.Valency where
+module Mangrove.Valency
+  ( Valency(..)
+  , multary
+  ) where
 
 -- | Valency represents the maximum number of arguments a parsing
 -- structure can consume.

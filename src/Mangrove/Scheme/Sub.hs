@@ -3,7 +3,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies      #-}
 
-module Mangrove.Scheme.Sub where
+module Mangrove.Scheme.Sub
+  ( SubScheme(..)
+  , hasSubOptions
+  ) where
 
 import           Control.Applicative
 import           Control.Monad.Except

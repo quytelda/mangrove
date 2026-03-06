@@ -5,7 +5,13 @@
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE ViewPatterns      #-}
 
-module Mangrove.Scheme.Unix where
+module Mangrove.Scheme.Unix
+  ( Flag(..)
+  , OptionInfo(..)
+  , CommandInfo(..)
+  , UnixScheme(..)
+  , addHelpOptions
+  ) where
 
 import           Control.Applicative
 import           Control.Monad
