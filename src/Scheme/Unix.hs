@@ -20,7 +20,8 @@ import qualified Data.Text            as T
 import           ParseTree
 import           Resolve
 import           Scheme
-import           Scheme.Sub
+import qualified Scheme.Sub           as Sub
+import           Scheme.Sub           (SubScheme)
 import           Stream
 import           Text
 import           TextParser
@@ -150,7 +151,7 @@ instance Scheme UnixScheme where
           StreamState
           { streamContent = args
           , streamContext = []
-          , streamEscaped = not $ hasSubOptions subtree
+          , streamEscaped = not $ Sub.hasSubOptions subtree
           }
 
     withContext (UnixOption flag mbound) $ do

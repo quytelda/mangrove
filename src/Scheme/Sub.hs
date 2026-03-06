@@ -20,17 +20,17 @@ import           Valency
 
 -- | Parsers for subarguments of an option (e.g. @--option key=value@).
 data SubScheme r
-  = SubParameter (TextParser r) -- ^ Parses freeform arguments
-  | SubOption Text (TextParser r) -- ^ Suboptions have the form "KEY=VALUE"
+  = Parameter (TextParser r) -- ^ Parses freeform arguments
+  | Option Text (TextParser r) -- ^ Suboptions have the form "KEY=VALUE"
   deriving (Functor)
 
 instance Valency SubScheme where
   valency _ = Just 1
 
 instance Resolve SubScheme where
-  resolve (SubParameter (TextParser hint _)) =
+  resolve (Parameter (TextParser hint _)) =
     throwError $ ExpectedError [TLB.fromText hint]
-  resolve (SubOption key (TextParser hint _)) =
+  resolve (Option key (TextParser hint _)) =
     throwError $ ExpectedError [TLB.fromText key <> "=" <> TLB.fromText hint]
 
 instance Scheme SubScheme where
@@ -45,16 +45,16 @@ instance Scheme SubScheme where
     next <- peek
     escaped <- getEscaped
     case (parser, keyEqualsValue next) of
-      (SubParameter tp, Nothing) ->
+      (Parameter tp, Nothing) ->
         withContext (SubArgument next) $
         pop_ *> runTextParser tp next
-      (SubOption _ _, Nothing) ->
+      (Option _ _, Nothing) ->
         empty
-      (SubOption key tp, Just (k,v))
+      (Option key tp, Just (k,v))
         | not escaped && key == k ->
           withContext (SubAssoc k v) $
           pop_ *> runTextParser tp v
-      (SubParameter tp, Just _)
+      (Parameter tp, Just _)
         | escaped ->
           withContext (SubArgument next) $
           pop_ *> runTextParser tp next
@@ -62,8 +62,8 @@ instance Scheme SubScheme where
           empty
       _ -> empty
 
-  usageInfo (SubParameter tp)  = render $ parserHint tp
-  usageInfo (SubOption key tp) = render key <> "=" <> render (parserHint tp)
+  usageInfo (Parameter tp)  = render $ parserHint tp
+  usageInfo (Option key tp) = render key <> "=" <> render (parserHint tp)
 
 instance Render (Token SubScheme) where
   render (SubAssoc key value) = render key <> "=" <> render value
@@ -73,8 +73,8 @@ hasSubOptions :: ParseTree SubScheme r -> Bool
 hasSubOptions EmptyNode                    = False
 hasSubOptions HelpNode                     = False
 hasSubOptions (ValueNode _)                = False
-hasSubOptions (ParseNode (SubParameter _)) = False
-hasSubOptions (ParseNode (SubOption _ _))  = True
+hasSubOptions (ParseNode (Parameter _)) = False
+hasSubOptions (ParseNode (Option _ _))  = True
 hasSubOptions (ProdNode _ l r)             = hasSubOptions l || hasSubOptions r
 hasSubOptions (SumNode l r)                = hasSubOptions l || hasSubOptions r
 hasSubOptions (ManyNode _ tree)            = hasSubOptions tree
