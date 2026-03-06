@@ -33,6 +33,9 @@ instance Resolve SubScheme where
   resolve (Option key (TextParser hint _)) =
     throwError $ ExpectedError [TLB.fromText key <> "=" <> TLB.fromText hint]
 
+instance AcceptsParameters SubScheme where
+  parameter = ParseNode . Parameter
+
 instance Scheme SubScheme where
   data Token SubScheme
     = SubAssoc Text Text -- ^ A "KEY=VALUE" argument
@@ -70,11 +73,11 @@ instance Render (Token SubScheme) where
   render (SubArgument value)  = render value
 
 hasSubOptions :: ParseTree SubScheme r -> Bool
-hasSubOptions EmptyNode                    = False
-hasSubOptions HelpNode                     = False
-hasSubOptions (ValueNode _)                = False
+hasSubOptions EmptyNode                 = False
+hasSubOptions HelpNode                  = False
+hasSubOptions (ValueNode _)             = False
 hasSubOptions (ParseNode (Parameter _)) = False
 hasSubOptions (ParseNode (Option _ _))  = True
-hasSubOptions (ProdNode _ l r)             = hasSubOptions l || hasSubOptions r
-hasSubOptions (SumNode l r)                = hasSubOptions l || hasSubOptions r
-hasSubOptions (ManyNode _ tree)            = hasSubOptions tree
+hasSubOptions (ProdNode _ l r)          = hasSubOptions l || hasSubOptions r
+hasSubOptions (SumNode l r)             = hasSubOptions l || hasSubOptions r
+hasSubOptions (ManyNode _ tree)         = hasSubOptions tree

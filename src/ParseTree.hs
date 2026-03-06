@@ -9,6 +9,8 @@
 module ParseTree
   ( ParseTree(..)
   , nullary
+  , AcceptsParameters(..)
+  , defaultParameter
   , satiate
   , runTreeParser
   , parseArguments
@@ -25,6 +27,7 @@ import           Result
 import           Scheme
 import           Stream
 import           Text
+import           TextParser
 import           Valency
 
 -- | 'ParseTree scheme r' is an expression tree composed of parsers
@@ -129,6 +132,15 @@ nullary (ParseNode _)     = False
 nullary (ProdNode _ l r)  = nullary l && nullary r
 nullary (SumNode l r)     = nullary l && nullary r
 nullary (ManyNode _ tree) = nullary tree
+
+--------------------------------------------------------------------------------
+-- Generics
+
+class AcceptsParameters s where
+  parameter :: TextParser a -> ParseTree s a
+
+defaultParameter :: (AcceptsParameters p, DefaultParser r) => ParseTree p r
+defaultParameter = parameter defaultParser
 
 --------------------------------------------------------------------------------
 

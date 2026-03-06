@@ -13,21 +13,9 @@ import           TextParser
 
 type CliParser = ParseTree UnixScheme
 
-class AcceptsParameters s where
-  parameter :: TextParser a -> ParseTree s a
-
-instance AcceptsParameters SubScheme where
-  parameter = subparameter
-
-instance AcceptsParameters UnixScheme where
-  parameter = unixparameter
-
 -- | Define a command line parameter (i.e. a non-option).
 unixparameter :: TextParser a -> ParseTree UnixScheme a
 unixparameter = ParseNode . Unix.Parameter
-
-defaultParameter :: (DefaultParser r, AcceptsParameters p) => ParseTree p r
-defaultParameter = parameter defaultParser
 
 option
   :: NonEmpty Unix.Flag
