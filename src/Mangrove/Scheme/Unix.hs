@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE ViewPatterns      #-}
 
@@ -11,23 +12,29 @@ module Mangrove.Scheme.Unix
   , CommandInfo(..)
   , UnixScheme(..)
   , addHelpOptions
+  , renderHelp
   ) where
 
 import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.Except
 import           Data.Char
-import           Data.List.NonEmpty   (NonEmpty)
-import qualified Data.List.NonEmpty   as NonEmpty
+import qualified Data.List              as List
+import           Data.List.NonEmpty     (NonEmpty)
+import qualified Data.List.NonEmpty     as NonEmpty
+import           Data.Map.Strict        (Map)
+import qualified Data.Map.Strict        as Map
 import           Data.String
-import           Data.Text            (Text)
-import qualified Data.Text            as T
+import           Data.Text              (Text)
+import qualified Data.Text              as T
+import qualified Data.Text.Lazy         as TL
+import qualified Data.Text.Lazy.Builder as TLB
 
 import           Mangrove.ParseTree
 import           Mangrove.Resolve
 import           Mangrove.Scheme
-import qualified Mangrove.Scheme.Sub           as Sub
-import           Mangrove.Scheme.Sub           (SubScheme)
+import           Mangrove.Scheme.Sub    (SubScheme)
+import qualified Mangrove.Scheme.Sub    as Sub
 import           Mangrove.Stream
 import           Mangrove.Text
 import           Mangrove.TextParser
@@ -217,6 +224,9 @@ instance Render (Token UnixScheme) where
   render (UnixOption f@(ShortFlag _) (Just v)) = render f <> render v
   render (UnixOption f@(ShortFlag _) Nothing)  = render f
 
+--------------------------------------------------------------------------------
+-- Help
+
 -- | Automatically insert a help option at the top level of the tree
 -- and every subcommand tree.
 addHelpOptions :: NonEmpty Flag -> ParseTree UnixScheme r -> ParseTree UnixScheme r
@@ -237,3 +247,89 @@ addHelpOptions flags tree = ParseNode helpOption <|> go tree
     go (SumNode l r) = SumNode (go l) (go r)
     go (ManyNode require p) = ManyNode require (go p)
     go node = node
+
+data OptionHelp = OptionHelp
+  { colShorts :: TL.Text -- Column 1
+  , colLongs  :: TL.Text -- Column 2
+  , colArg    :: TL.Text -- Column 3
+  , colDesc   :: TL.Text -- Column 4
+  } deriving (Eq, Ord, Show)
+
+makeOptionHelp :: OptionInfo -> ParseTree SubScheme r -> OptionHelp
+makeOptionHelp OptionInfo{..} subtree =
+  OptionHelp
+  { colLongs  = fmtFlagList longs
+  , colShorts = fmtFlagList shorts
+  , colArg    = if nullary subtree
+                then mempty
+                else renderLazyText subtree
+  , colDesc   = TL.fromStrict optHelp
+  }
+  where
+    isLongFlag LongFlag{} = True
+    isLongFlag _          = False
+    (longs, shorts) = NonEmpty.partition isLongFlag optFlags
+    fmtFlagList = TL.intercalate ", " . fmap renderLazyText
+
+collectOptions :: ParseTree UnixScheme r -> Map [CommandInfo] [OptionHelp]
+collectOptions tree = go tree mempty
+  where
+    go :: ParseTree UnixScheme r
+       -> Map [CommandInfo] [OptionHelp]
+       -> Map [CommandInfo] [OptionHelp]
+    go (ParseNode (Option info subtree)) =
+      Map.insertWith (<>) [] [makeOptionHelp info subtree]
+    go (ParseNode (Command info subtree)) =
+      Map.union $ Map.mapKeys (info :) $ collectOptions subtree
+    go (ProdNode _ l r) = go r . go l
+    go (SumNode l r)    = go r . go l
+    go (ManyNode _ p)   = go p
+    go _                = id
+
+renderOptionTable :: [OptionHelp] -> Builder
+renderOptionTable xs = foldMap formatRow $ List.sort xs
+  where
+    maxLengthBy f = maximum $ TL.length . f <$> xs
+    col1width = maxLengthBy colShorts
+    col2width = maxLengthBy colLongs
+    col3width = maxLengthBy colArg
+
+    formatRow OptionHelp{..} =
+      TLB.fromLazyText $ TL.intercalate "  "
+      [ TL.justifyLeft col1width ' ' colShorts
+      , TL.justifyLeft col2width ' ' colLongs
+      , TL.justifyLeft col3width ' ' colArg
+      , colDesc
+      , "\n"
+      ]
+
+renderHeader :: [CommandInfo] -> Builder
+renderHeader [] = mempty
+renderHeader cmds@(info : _) =
+  fmtCommand cmds
+  <> " command: "
+  <> render (cmdHelp info)
+  <> "\n"
+  where
+    quote m = "\"" <> m <> "\""
+    fmtCommand = quote . render . T.unwords . fmap cmdHead . reverse
+
+renderTables :: Map [CommandInfo] [OptionHelp] -> Builder
+renderTables =
+  Map.foldlWithKey
+  (\acc cmds desc ->
+      acc
+      <> "\n"
+      <> renderHeader cmds
+      <> renderOptionTable desc
+  ) mempty
+
+renderHelp
+  :: Text -- ^ Global name (e.g. the program name)
+  -> Text -- ^ Global description
+  -> ParseTree UnixScheme r
+  -> Builder
+renderHelp name description tree =
+  "Usage: " <> render name <> " " <> render tree <> "\n\n"
+  <> render description <> "\n"
+  <> renderTables (collectOptions tree)
