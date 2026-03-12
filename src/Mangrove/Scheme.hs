@@ -1,5 +1,4 @@
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE TypeFamilies   #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Mangrove.Scheme
   ( Scheme(..)

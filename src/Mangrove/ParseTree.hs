@@ -180,10 +180,9 @@ runTreeParser
   -> StreamHandler (Token s) r a
   -> StreamState (Token s) -- ^ Initial state and input
   -> a
-runTreeParser tree handler state =
+runTreeParser tree handler =
   runStreamParser (satiate tree)
   handler { onSuccess = evaluateResult }
-  state
   where
     evaluateResult _state tree' =
       case resolve tree' of
