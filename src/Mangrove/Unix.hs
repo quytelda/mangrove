@@ -13,10 +13,6 @@ import           Mangrove.TextParser
 
 type UnixParser = ParseTree UnixScheme
 
--- | Define a command line parameter (i.e. a non-option).
-unixparameter :: TextParser a -> ParseTree UnixScheme a
-unixparameter = ParseNode . Unix.Parameter
-
 option
   :: NonEmpty Unix.Flag
   -> Text
