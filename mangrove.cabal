@@ -27,7 +27,6 @@ library
   exposed-modules:
       Mangrove.ParseTree
       Mangrove.Resolve
-      Mangrove.Result
       Mangrove.Scheme
       Mangrove.Scheme.Sub
       Mangrove.Scheme.Unix

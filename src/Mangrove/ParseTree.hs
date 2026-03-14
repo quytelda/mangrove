@@ -13,7 +13,6 @@ module Mangrove.ParseTree
   , defaultParameter
   , satiate
   , runTreeParser
-  , parseArguments
   ) where
 
 import           Control.Applicative
@@ -23,7 +22,6 @@ import           Data.Proxy
 import           Data.Text            (Text)
 
 import           Mangrove.Resolve
-import           Mangrove.Result
 import           Mangrove.Scheme
 import           Mangrove.Stream
 import           Mangrove.Text
@@ -191,17 +189,3 @@ runTreeParser tree handler =
           case streamContent _state of
             (token:_) -> onFailure handler _state $ "unexpected " <> render token
             _         -> onFailure handler _state $ render err
-
-parseArguments
-  :: (Render (Token s), Scheme s)
-  => ParseTree s r
-  -> [Text]
-  -> Result Builder (r, [Text])
-parseArguments tree args =
-  runTreeParser tree StreamHandler
-  { onSuccess = \state result -> pure (result, streamContent state)
-  , onEmpty = flip throwWithContext "empty"
-  , onFailure = throwWithContext
-  , onHelpRequest = const HelpRequest
-  }
-  (StreamState args [] False)
