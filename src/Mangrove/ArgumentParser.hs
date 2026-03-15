@@ -1,0 +1,55 @@
+{-# LANGUAGE OverloadedStrings #-}
+
+module Mangrove.ArgumentParser where
+
+import           Data.Text          (Text)
+import qualified Data.Text          as T
+
+import           Mangrove.ParseTree
+import           Mangrove.Resolve
+import           Mangrove.Scheme
+import           Mangrove.Stream
+import           Mangrove.Text
+
+data Result tok r
+  = Success [Text] r
+  | Failure [tok] Builder
+  | HelpRequest [tok]
+  deriving (Show)
+
+-- | Satiate a 'ParseTree' with all the input it can consume, then
+-- attempt to evaluate it.
+runArgumentParser
+  :: Scheme s
+  => ParseTree s r
+  -> [Text]
+  -> Result (Token s) r
+runArgumentParser tree args =
+  runArgumentParser' tree StreamState
+  { streamContent = args
+  , streamContext = []
+  , streamEscaped = False
+  }
+
+-- | This is the same thing as 'runArgumentParser', but accepts a
+-- custom 'StreamState' as the starting state.
+runArgumentParser'
+  :: Scheme s
+  => ParseTree s r
+  -> StreamState (Token s)
+  -> Result (Token s) r
+runArgumentParser' tree =
+  runStreamParser (satiate tree) handler
+  where
+    _onFailure = Failure . streamContext
+    _onSuccess state' tree' =
+      case (streamContent state', resolve tree') of
+        (leftovers, Right result) -> Success leftovers result
+        ([], Left err) -> _onFailure state' $ render err
+        (token:_, _) -> _onFailure state' $ "unexpected " <> render token
+    handler = StreamHandler
+      { onSuccess = _onSuccess
+      , onFailure = _onFailure
+      , onEmpty = flip _onFailure "empty"
+      , onHelpRequest = HelpRequest . streamContext
+      }
