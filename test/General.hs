@@ -8,8 +8,8 @@ import           Data.Either
 
 import           Test.Hspec
 
+import           Mangrove.ArgumentParser
 import           Mangrove.ParseTree
-import           Mangrove.Result
 import           Mangrove.Scheme.Unix
 import           Mangrove.Text
 
@@ -18,52 +18,47 @@ import           TestParsers
 optionSpec :: Spec
 optionSpec = do
   it "parses long options" $ do
-    parseArguments opt_example_unit ["--example"]
-      `shouldBe` Success ((), [])
+    runArgumentParser opt_example_unit ["--example"]
+      `shouldBe` Success [] ()
   it "parses short options" $ do
-    parseArguments opt_e_unit ["-e"]
-      `shouldBe` Success ((), [])
+    runArgumentParser opt_e_unit ["-e"]
+      `shouldBe` Success [] ()
 
   it "parses options in any order" $ do
-    parseArguments (opt_e_unit *> opt_f_unit) ["-e", "-f"]
-      `shouldBe` Success ((), [])
-    parseArguments (opt_e_unit *> opt_f_unit) ["-f", "-e"]
-      `shouldBe` Success ((), [])
+    runArgumentParser (opt_e_unit *> opt_f_unit) ["-e", "-f"]
+      `shouldBe` Success [] ()
+    runArgumentParser (opt_e_unit *> opt_f_unit) ["-f", "-e"]
+      `shouldBe` Success [] ()
 
   describe "switches" $ do
     context "when switch is present" $ do
       it "yields True" $ do
-        parseArguments opt_example_switch ["--example"]
-          `shouldBe` Success (True, [])
+        runArgumentParser opt_example_switch ["--example"]
+          `shouldBe` Success [] True
     context "when switch is absent" $ do
       it "yields False" $ do
-        parseArguments opt_example_switch []
-          `shouldBe` Success (False, [])
+        runArgumentParser opt_example_switch []
+          `shouldBe` Success [] False
 
   context "when a bound argument is provided" $ do
     context "when an argument is expected" $ do
       it "parses the argument" $ do
-        parseArguments opt_example_param ["--example=qwer"]
-          `shouldBe` Success ("qwer", [])
-        parseArguments opt_e_param ["-eqwer"]
-          `shouldBe` Success ("qwer", [])
+        runArgumentParser opt_example_param ["--example=qwer"]
+          `shouldBe` Success [] "qwer"
+        runArgumentParser opt_e_param ["-eqwer"]
+          `shouldBe` Success [] "qwer"
     context "when no argument is expected" $ do
       it "parsing fails" $ do
-        parseArguments opt_example_unit ["--example=qwer"]
-          `shouldBe` Failure "--example=qwer: unrecognized subargument: qwer"
-        parseArguments opt_e_unit ["-eqwer"]
-          `shouldBe` Failure "-eqwer: unrecognized subargument: qwer"
+        runArgumentParser opt_example_unit ["--example=qwer"]
+          `shouldBe` Failure [UnixOption (LongFlag "example") (Just "qwer")] "unrecognized subargument: qwer"
+        runArgumentParser opt_e_unit ["-eqwer"]
+          `shouldBe` Failure [UnixOption (ShortFlag 'e') (Just "qwer")] "unrecognized subargument: qwer"
 
   context "when no argument is expected" $ do
     context "when an argument is available" $ do
       it "doesn't consume the argument" $ do
-        let result = parseArguments opt_example_unit ["--example", "qwer"]
-            result' =
-              case result of
-                Success (value, leftovers) -> Success (value, fmap render leftovers)
-                Failure err                -> Failure err
-                HelpRequest                -> HelpRequest
-        result' `shouldBe` Success ((), ["qwer"])
+        runArgumentParser opt_example_unit ["--example", "qwer"]
+          `shouldBe` Success ["qwer"] ()
 
   context "when an argument is required" $ do
     it "renders with parameter hint" $ do
@@ -72,12 +67,12 @@ optionSpec = do
 
     context "when no argument is provided" $ do
       it "fails to parse" $ do
-        parseArguments opt_example_param ["--example"]
-          `shouldBe` Failure "--example: expected: STRING"
+        runArgumentParser opt_example_param ["--example"]
+          `shouldBe` Failure [UnixOption (LongFlag "example") Nothing] "expected: STRING"
     context "when an argument is provided" $ do
       it "the argument is consumed" $ do
-        parseArguments opt_example_param ["--example", "qwer"]
-          `shouldBe` Success ("qwer", [])
+        runArgumentParser opt_example_param ["--example", "qwer"]
+          `shouldBe` Success [] "qwer"
 
   context "when an argument is optional" $ do
     it "renders parameter hint in brackets" $ do
@@ -85,86 +80,91 @@ optionSpec = do
 
     context "when no argument is provided" $ do
       it "yields a default value" $ do
-        parseArguments opt_example_param_optional ["--example"]
-          `shouldBe` Success ("asdf", [])
+        runArgumentParser opt_example_param_optional ["--example"]
+          `shouldBe` Success [] "asdf"
     context "when an argument is provided" $ do
       it "parses the argument" $ do
-        parseArguments opt_example_param_optional ["--example", "qwer"]
-          `shouldBe` Success ("qwer", [])
+        runArgumentParser opt_example_param_optional ["--example", "qwer"]
+          `shouldBe` Success [] "qwer"
 
   describe "compound options" $ do
     context "when the subtree accepts multiple arguments" $ do
       it "splits the input by delimiter" $ do
-        parseArguments opt_example_pair ["--example", "1,3"]
-          `shouldBe` Success ((1,3), [])
+        runArgumentParser opt_example_pair ["--example", "1,3"]
+          `shouldBe` Success [] (1,3)
     context "when the subtree can't accept multiple argument" $ do
       it "doesn't split the input by delimiter" $ do
-        parseArguments opt_example_param ["--example", "1,3"]
-          `shouldBe` Success ("1,3", [])
-        parseArguments opt_example_param_optional ["--example", "1,3"]
-          `shouldBe` Success ("1,3", [])
+        runArgumentParser opt_example_param ["--example", "1,3"]
+          `shouldBe` Success [] "1,3"
+        runArgumentParser opt_example_param_optional ["--example", "1,3"]
+          `shouldBe` Success [] "1,3"
 
     context "when the subtree accepts suboptions" $ do
       it "parses key=value pairs" $ do
-        parseArguments opt_example_subopt ["--example", "value=asdf"]
-          `shouldBe` Success ("asdf", [])
-        parseArguments opt_example_subopt ["--example=value=asdf"]
-          `shouldBe` Success ("asdf", [])
+        runArgumentParser opt_example_subopt ["--example", "value=asdf"]
+          `shouldBe` Success [] "asdf"
+        runArgumentParser opt_example_subopt ["--example=value=asdf"]
+          `shouldBe` Success [] "asdf"
     context "when the subtree can't accept suboptions" $ do
       it "doesn't parse key=value pairs" $ do
-        parseArguments opt_example_param ["--example", "value=asdf"]
-          `shouldBe` Success ("value=asdf", [])
-        parseArguments opt_example_param ["--example=value=asdf"]
-          `shouldBe` Success ("value=asdf", [])
+        runArgumentParser opt_example_param ["--example", "value=asdf"]
+          `shouldBe` Success [] "value=asdf"
+        runArgumentParser opt_example_param ["--example=value=asdf"]
+          `shouldBe` Success [] "value=asdf"
 
   describe "help options" $ do
     context "when a help option is present" $ do
       it "requests help" $ do
-        parseArguments (addHelpOptions ["--help"] opt_example_unit) ["--help"]
-          `shouldBe` HelpRequest
+        runArgumentParser (addHelpOptions ["--help"] opt_example_unit) ["--help"]
+          `shouldBe` HelpRequest [UnixOption (LongFlag "help") Nothing]
       it "works for subcommands" $ do
-        parseArguments (addHelpOptions ["--help"] cmd_example_tree) ["example", "--help"]
-          `shouldBe` HelpRequest
-        parseArguments (addHelpOptions ["--help"] cmd_example_tree) ["example", "asdf", "--help"]
-          `shouldBe` HelpRequest
+        runArgumentParser (addHelpOptions ["--help"] cmd_example_tree) ["example", "--help"]
+          `shouldBe` HelpRequest [ UnixOption (LongFlag "help") Nothing
+                                 , UnixCommand "example"
+                                 ]
+        runArgumentParser (addHelpOptions ["--help"] cmd_example_tree) ["example", "asdf", "--help"]
+          `shouldBe` HelpRequest [ UnixOption (LongFlag "help") Nothing
+                                 , UnixCommand "asdf"
+                                 , UnixCommand "example"
+                                 ]
 
     context "when a help option is absent" $ do
       it "doesn't request help" $ do
-        parseArguments (addHelpOptions ["--help"] opt_example_unit) ["--example"]
-          `shouldBe` Success ((), [])
-        parseArguments (addHelpOptions ["--help"] opt_example_unit) []
-          `shouldBe` Failure "expected: --help or --example"
+        runArgumentParser (addHelpOptions ["--help"] opt_example_unit) ["--example"]
+          `shouldBe` Success [] ()
+        runArgumentParser (addHelpOptions ["--help"] opt_example_unit) []
+          `shouldBe` Failure [] "expected: --help or --example"
       it "isn't activated by escaped options" $ do
-        parseArguments (addHelpOptions ["--help"] opt_example_unit) ["--", "--help"]
-          `shouldBe` Failure "unexpected --help"
+        runArgumentParser (addHelpOptions ["--help"] opt_example_unit) ["--", "--help"]
+          `shouldBe` Failure [] "unexpected --help"
 
 generalSpec :: Spec
 generalSpec = do
   context "when \"-\" is given as an argument" $ do
     it "parses the string \"-\"" $ do
-      parseArguments param_text ["-"]
-        `shouldBe` Success ("-", [])
+      runArgumentParser param_text ["-"]
+        `shouldBe` Success [] "-"
 
   context "when \"--\" is present in the argument list" $ do
     it "treats subsequent arguments as free arguments" $ do
-      parseArguments param_text ["--", "asdf"]
-        `shouldBe` Success ("asdf", [])
+      runArgumentParser param_text ["--", "asdf"]
+        `shouldBe` Success [] "asdf"
     it "doesn't treat subsequent arguments as options" $ do
-      parseArguments (option_asdf <|> param_text) ["--", "--asdf"]
-        `shouldBe` Success ("--asdf", [])
+      runArgumentParser (option_asdf <|> param_text) ["--", "--asdf"]
+        `shouldBe` Success [] "--asdf"
     it "doesn't treat subsequent arguments as commands" $ do
-      parseArguments (command_asdf <|> param_text) ["--", "asdf"]
-        `shouldBe` Success ("asdf", [])
+      runArgumentParser (command_asdf <|> param_text) ["--", "asdf"]
+        `shouldBe` Success [] "asdf"
 
   context "when not enough input is provided" $ do
     it "fails to generate a result" $ do
-      parseArguments param_text []
-        `shouldBe` Failure "expected: STRING"
+      runArgumentParser param_text []
+        `shouldBe` Failure [] "expected: STRING"
 
   context "when not all input can be consumed" $ do
     it "returns unconsumed arguments" $ do
-      parseArguments param_text ["asdf", "qwer"]
-        `shouldBe` Success ("asdf", ["qwer"])
+      runArgumentParser param_text ["asdf", "qwer"]
+        `shouldBe` Success ["qwer"] "asdf"
 
 spec :: Spec
 spec = do

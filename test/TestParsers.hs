@@ -9,7 +9,6 @@ import           Data.Text            (Text)
 import           Test.Hspec
 
 import           Mangrove.ParseTree
-import           Mangrove.Result
 import           Mangrove.Scheme.Unix
 import           Mangrove.TextParser
 import           Mangrove.Unix
@@ -63,5 +62,3 @@ opt_home_create =
   <$> subparameter defaultParser
   <*> (suboption "create" defaultParser <|> pure False)
 
-testParser :: (Eq r, Show r) => UnixParser r -> [Text] -> r -> Expectation
-testParser tree args expect = parseArguments tree args `shouldBe` Success (expect, [])
