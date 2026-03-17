@@ -3,8 +3,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies      #-}
 
+{-|
+Module      : Mangrove.Scheme.Sub
+Copyright   : (c) Quytelda Kahja, 2026
+License     : BSD-3-Clause
+
+A parsing scheme for Unix-style subarguments (i.e. arguments passed as
+subarguments to an option).
+-}
 module Mangrove.Scheme.Sub
-  ( SubScheme(..)
+  ( -- * Types
+    SubScheme(..)
+  , Token(..)
+
+    -- * Properties
   , hasSubOptions
   ) where
 
@@ -75,6 +87,8 @@ instance Render (Token SubScheme) where
   render (SubAssoc key value) = render key <> "=" <> render value
   render (SubArgument value)  = render value
 
+-- | Check whether a parse tree contains any suboption parsers. This
+-- allows us to determine if we need to parse "KEY=VALUE" pairs.
 hasSubOptions :: ParseTree SubScheme r -> Bool
 hasSubOptions EmptyNode                 = False
 hasSubOptions HelpNode                  = False

@@ -1,9 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Mangrove.ArgumentParser where
+{-|
+Module      : Mangrove.ArgumentParser
+Copyright   : (c) Quytelda Kahja, 2026
+License     : BSD-3-Clause
+
+A complete (but generic) argument parsing interface.
+-}
+module Mangrove.ArgumentParser
+  ( Result(..)
+  , runArgumentParser
+  , runArgumentParser'
+  ) where
 
 import           Data.Text          (Text)
-import qualified Data.Text          as T
 
 import           Mangrove.ParseTree
 import           Mangrove.Resolve
@@ -11,6 +21,8 @@ import           Mangrove.Scheme
 import           Mangrove.Stream
 import           Mangrove.Text
 
+-- | Represents the final result of a parsing operation. Each
+-- constructor represents a potential exit point.
 data Result tok r
   = Success [Text] r
   | Failure [tok] Builder

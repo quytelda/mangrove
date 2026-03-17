@@ -6,6 +6,14 @@
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE ViewPatterns      #-}
 
+{-|
+Module      : Mangrove.TextParser
+Copyright   : (c) Quytelda Kahja, 2026
+License     : BSD-3-Clause
+
+Structures for parsing text input, along with some default parsers.
+-}
+
 module Mangrove.TextParser
   ( TextParser(..)
   , runTextParser
@@ -20,14 +28,21 @@ import qualified Data.Text.Read         as TR
 
 import           Mangrove.Text
 
+-- | A 'TextParser' is the most atomic client-defined parsing unit. It
+-- parses textual data that is not otherwise part of the parsing
+-- scheme into the actual results that will be combined and returned
+-- once parsing completes.
 data TextParser r = TextParser
-  { parserHint :: Text
-  , parserRun  :: Text -> Either Builder r
+  { parserHint :: Text -- ^ A hint about the type of input this parser expects
+  , parserRun  :: Text -> Either Builder r -- ^ An actual parsing function
   } deriving (Functor)
 
+-- | Lift a 'TextParser' into some 'MonadError'.
 runTextParser :: MonadError Builder m => TextParser r -> Text -> m r
 runTextParser tp = liftEither . parserRun tp
 
+-- | A typeclass for types that have a convenient default
+-- 'TextParser'.
 class DefaultParser r where
   defaultParser :: TextParser r
 

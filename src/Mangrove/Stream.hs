@@ -8,11 +8,11 @@
 {-# LANGUAGE TypeFamilies              #-}
 
 {-|
-Module      : Stream
+Module      : Mangrove.Stream
 Copyright   : (c) Quytelda Kahja, 2025
 License     : BSD-3-Clause
 
-Provides a basic stream-parsing monad for parsing a token sequences
+Provides a basic stream-parsing monad for parsing argument sequences
 with error handling and context management.
 -}
 module Mangrove.Stream
@@ -20,18 +20,22 @@ module Mangrove.Stream
     StreamParser(..)
   , StreamHandler(..)
   , StreamState(..)
+
+    -- * Monadic Actions
+    -- ** Help
   , requestHelp
+
+    -- ** Escaping
   , setEscaped
   , getEscaped
 
-    -- * Context
+    -- ** Context
   , getContext
   , setContext
   , withContext
   , renderError
-  , throwWithContext
 
-    -- * Stream
+    -- ** Streaming
   , popMaybe
   , peekMaybe
   , pop
@@ -138,19 +142,13 @@ withContext context action = do
   setContext $ context : oldContext
   action <* setContext oldContext
 
+-- | Combine an error message with context information.
 renderError :: Render tok => [tok] -> Builder -> Builder
 renderError contexts err =
   mconcat
   $ List.intersperse ": "
   $ reverse
   $ err : map render contexts
-
-throwWithContext
-  :: (MonadError Builder m, Render tok)
-  => StreamState tok
-  -> Builder
-  -> m a
-throwWithContext state = throwError . renderError (streamContext state)
 
 --------------------------------------------------------------------------------
 

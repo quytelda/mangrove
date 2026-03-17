@@ -6,12 +6,27 @@
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeFamilies        #-}
 
+{-|
+Module      : Mangrove.ParseTree
+Copyright   : (c) Quytelda Kahja, 2026
+License     : BSD-3-Clause
+
+A 'ParseTree' is a tree-shaped parser that "filter-feeds" on a stream
+of arguments, collecting inputs at the leaves and feeding the results
+up the tree for processing. 'ParseTree's are parameterized by the
+parser scheme that determines the kind of inputs it accepts.
+-}
 module Mangrove.ParseTree
-  ( ParseTree(..)
+  ( -- * Types
+    ParseTree(..)
   , nullary
+
+    -- * Feeding Trees
+  , satiate
+
+    -- * Generic Parameters
   , AcceptsParameters(..)
   , defaultParameter
-  , satiate
   ) where
 
 import           Control.Applicative
@@ -26,8 +41,8 @@ import           Mangrove.Text
 import           Mangrove.TextParser
 import           Mangrove.Valency
 
--- | 'ParseTree scheme r' is an expression tree composed of parsers
--- from scheme 'scheme' which evaluates to a value of type 'r' when
+-- | `ParseTree scheme r` is an expression tree composed of parsers
+-- from scheme @scheme@ which evaluates to a value of type @r@ when
 -- supplied with the proper input.
 data ParseTree (scheme :: Type -> Type) (r :: Type) where
   -- | Terminal node with no value (abstracts 'empty')
@@ -130,15 +145,6 @@ nullary (SumNode l r)     = nullary l && nullary r
 nullary (ManyNode _ tree) = nullary tree
 
 --------------------------------------------------------------------------------
--- Generics
-
-class AcceptsParameters s where
-  parameter :: TextParser a -> ParseTree s a
-
-defaultParameter :: (AcceptsParameters p, DefaultParser r) => ParseTree p r
-defaultParameter = parameter defaultParser
-
---------------------------------------------------------------------------------
 
 -- | 'feed' traverses the tree until it activates a parser that
 -- consumes input. When a subtree successfully consumes input, it is
@@ -167,3 +173,16 @@ satiate tree = do
   case result of
     Just tree' -> satiate tree'
     Nothing    -> pure tree
+
+--------------------------------------------------------------------------------
+-- Generics
+
+-- | A typeclass for parser schemes that accepts some kind of freeform
+-- parameter.
+class AcceptsParameters s where
+  parameter :: TextParser a -> ParseTree s a
+
+-- | A parameter that uses the 'DefaultParser' implementation to
+-- automatically provide a parser for this expected result type.
+defaultParameter :: (AcceptsParameters p, DefaultParser r) => ParseTree p r
+defaultParameter = parameter defaultParser

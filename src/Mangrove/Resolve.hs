@@ -1,6 +1,14 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+{-|
+Module      : Mangrove.Resolve
+Copyright   : (c) Quytelda Kahja, 2026
+License     : BSD-3-Clause
+
+Resolvable parsers represent expressions that can be evaluated to a
+value once they have received the appropriate input.
+-}
 module Mangrove.Resolve
   ( -- * Resolution
     ResolveError(..)
@@ -31,6 +39,8 @@ instance Render ResolveError where
   render EmptyError = "empty"
   render (ExpectedError ts) = "expected: " <> mconcat (List.intersperse " or " ts)
 
+-- | Combine resolution results, preserving information about failures
+-- when necessary.
 sumResults :: Either ResolveError r -> Either ResolveError r -> Either ResolveError r
 sumResults (Left e1) (Left e2) = Left $ e1 <> e2
 sumResults l r                 = l <> r
@@ -40,5 +50,6 @@ sumResults l r                 = l <> r
 class Resolve f where
   resolve :: f r -> Either ResolveError r
 
+-- | Lift 'resolve' into 'MonadError Builder'.
 resolveLifted :: (Resolve f, MonadError Builder m) => f r -> m r
 resolveLifted = liftEither . first render . resolve

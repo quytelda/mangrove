@@ -6,17 +6,28 @@
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE ViewPatterns      #-}
 
+{-|
+Module      : Mangrove.Scheme.Unix
+Copyright   : (c) Quytelda Kahja, 2026
+License     : BSD-3-Clause
+
+A parsing scheme for Unix-style command line arguments.
+-}
 module Mangrove.Scheme.Unix
-  ( Flag(..)
+  ( -- * Describing Commands & Options
+    Flag(..)
   , OptionInfo(..)
   , CommandInfo(..)
+
+    -- * Unix Scheme
   , UnixScheme(..)
   , Token(..)
+
+    -- * Help
   , addHelpOptions
   , collectOptions
   , selectSubtable
   , renderTables
-  , renderHelp
   ) where
 
 import           Control.Applicative
@@ -69,18 +80,20 @@ instance Render Flag where
   render (LongFlag s)  = "--" <> render s
   render (ShortFlag c) = "-" <> render c
 
+-- | A description of a CLI option.
 data OptionInfo = OptionInfo
-  { optFlags :: NonEmpty Flag -- | A list of flags that trigger this option.
-  , optHelp  :: Text -- | A description displayed in help output.
+  { optFlags :: NonEmpty Flag -- ^ A list of flags that trigger this option.
+  , optHelp  :: Text -- ^ A description displayed in help output.
   } deriving (Eq, Ord, Show)
 
 -- | Get a representative flag for this option (e.g. the first one).
 optHead :: OptionInfo -> Flag
 optHead = NonEmpty.head . optFlags
 
+-- | A description of a CLI command.
 data CommandInfo = CommandInfo
-  { cmdNames :: NonEmpty Text
-  , cmdHelp  :: Text -- | A description displayed in help output.
+  { cmdNames :: NonEmpty Text -- ^ Command Names
+  , cmdHelp  :: Text -- ^ A description displayed in help output.
   } deriving (Eq, Ord, Show)
 
 -- | Get a representative command name for this command (e.g. the
@@ -273,6 +286,8 @@ makeOptionHelp OptionInfo{..} subtree =
     (longs, shorts) = NonEmpty.partition isLongFlag optFlags
     fmtFlagList = TL.intercalate ", " . fmap renderLazyText
 
+-- | Enumerate descriptive information for all options available in a
+-- parse tree, indexed by the set of commands under which they exist.
 collectOptions :: ParseTree UnixScheme r -> Map [CommandInfo] [OptionHelp]
 collectOptions tree = go tree mempty
   where
@@ -316,6 +331,7 @@ renderHeader cmds@(info : _) =
     quote m = "\"" <> m <> "\""
     fmtCommand = quote . render . T.unwords . fmap cmdHead . reverse
 
+-- | Format an index of commands and options for help output display.
 renderTables :: Map [CommandInfo] [OptionHelp] -> Builder
 renderTables =
   Map.foldlWithKey
@@ -326,6 +342,8 @@ renderTables =
       <> renderOptionTable desc
   ) mempty
 
+-- | Select only the options tables which exist under a particular
+-- command sequence.
 selectSubtable
   :: [Text]
   -> Map [CommandInfo] [OptionHelp]
@@ -336,13 +354,3 @@ selectSubtable cmds table =
 isParentCommand :: [Text] -> [CommandInfo] -> Bool
 isParentCommand cmds =
   and . zipWith (\cmd info -> cmd `elem` cmdNames info) cmds
-
-renderHelp
-  :: Text -- ^ Global name (e.g. the program name)
-  -> Text -- ^ Global description
-  -> ParseTree UnixScheme r
-  -> Builder
-renderHelp name description tree =
-  "Usage: " <> render name <> " " <> render tree <> "\n\n"
-  <> render description <> "\n"
-  <> renderTables (collectOptions tree)

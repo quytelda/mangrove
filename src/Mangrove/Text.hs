@@ -4,6 +4,13 @@
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE ViewPatterns      #-}
 
+{-|
+Module      : Mangrove.Text
+Copyright   : (c) Quytelda Kahja, 2026
+License     : BSD-3-Clause
+
+Utilities for dealing with various types of text.
+-}
 module Mangrove.Text
   ( -- * Text Rendering
     Render(..)
@@ -43,15 +50,19 @@ instance Render Char where
 instance Render String where
   render = TLB.fromString
 
+-- | Convert renderable data directly to lazy 'TL.Text'.
 renderLazyText :: Render a => a -> TL.Text
 renderLazyText = TLB.toLazyText . render
 
+-- | Convert renderable data directly to strict 'T.Text'.
 renderText :: Render a => a -> Text
 renderText = TL.toStrict . TLB.toLazyText . render
 
+-- | Write the contents of a 'Builder' to standard output.
 putBuilder :: Builder -> IO ()
 putBuilder = TLIO.putStr . TLB.toLazyText
 
+-- | Write the contents of a 'Builder' to some IO handle.
 hPutBuilder :: Handle -> Builder -> IO ()
 hPutBuilder handle = TLIO.hPutStr handle . TLB.toLazyText
 

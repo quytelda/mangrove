@@ -1,7 +1,28 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
-module Mangrove.Unix where
+{-|
+Module      : Mangrove.Unix
+Copyright   : (c) Quytelda Kahja, 2026
+License     : BSD-3-Clause
+
+An API for defining, constructing, and running Unix-style command line
+parsers.
+-}
+
+module Mangrove.Unix
+  ( -- * Types
+    UnixParser
+  , parseArguments
+
+    -- * Tree-building Combinators
+  , option
+  , optionPure
+  , switch
+  , command
+  , subparameter
+  , suboption
+  ) where
 
 import           Control.Applicative
 import           Data.List.NonEmpty      (NonEmpty)
@@ -20,8 +41,46 @@ import           Mangrove.Stream
 import           Mangrove.Text
 import           Mangrove.TextParser
 
+-- | Convenient type alias for Unix-flavored parse trees.
 type UnixParser = ParseTree UnixScheme
 
+-- | Parse the command line arguments passed to the program, then
+-- invoke the program's entrypoint with the results of the parsing. If
+-- parsing fails, we instead display an error to stderr and exit.
+-- Alternatively, if help was requested, we abandon parsing and print
+-- the relevant help output to stdout, then exit without indicating an
+-- error.
+parseArguments
+  :: UnixParser r
+  -> Text -- ^ Program Name
+  -> Text -- ^ Program Description
+  -> (r -> IO a) -- ^ Program Entrypoint
+  -> IO a
+parseArguments tree name description action = do
+  args <- map T.pack <$> getArgs
+  case runArgumentParser tree args of
+    Success [] result -> action result
+    Success (token:_) _ -> do
+      hPutBuilder stderr $ "unexpected " <> render token <> "\n"
+      exitFailure
+    Failure contexts err -> do
+      hPutBuilder stderr $ renderError contexts err <> "\n"
+      exitFailure
+    HelpRequest contexts -> do
+      let cmds = [s | UnixCommand s <- contexts]
+          subIndex = selectSubtable (reverse cmds) helpIndex
+      putBuilder
+        $ "Usage: " <> render name <> " " <> render tree <> "\n\n"
+        <> render description <> "\n"
+        <> renderTables subIndex
+      exitSuccess
+  where
+    helpIndex = collectOptions tree
+
+--------------------------------------------------------------------------------
+-- Tree-building Combinators
+
+-- | Define a general CLI option.
 option
   :: NonEmpty Flag
   -> Text
@@ -57,36 +116,3 @@ subparameter = ParseNode . Sub.Parameter
 -- | Define a suboption to a CLI option.
 suboption :: Text -> TextParser a -> ParseTree SubScheme a
 suboption key = ParseNode . Sub.Option key
-
--- | Parse the command line arguments passed to the program, then
--- invoke the program's entrypoint with the results of the parsing. If
--- parsing fails, we instead display an error to stderr and exit.
--- Alternatively, if help was requested, we abandon parsing and print
--- the relevant help output to stdout, then exit without indicating an
--- error.
-parseArguments
-  :: UnixParser r
-  -> Text -- ^ Program Name
-  -> Text -- ^ Program Description
-  -> (r -> IO a) -- ^ Program Entrypoint
-  -> IO a
-parseArguments tree name description action = do
-  args <- map T.pack <$> getArgs
-  case runArgumentParser tree args of
-    Success [] result -> action result
-    Success (token:_) _ -> do
-      hPutBuilder stderr $ "unexpected " <> render token <> "\n"
-      exitFailure
-    Failure contexts err -> do
-      hPutBuilder stderr $ renderError contexts err <> "\n"
-      exitFailure
-    HelpRequest contexts -> do
-      let cmds = [s | UnixCommand s <- contexts]
-          subIndex = selectSubtable (reverse cmds) helpIndex
-      putBuilder
-        $ "Usage: " <> render name <> " " <> render tree <> "\n\n"
-        <> render description <> "\n"
-        <> renderTables subIndex
-      exitSuccess
-  where
-    helpIndex = collectOptions tree
