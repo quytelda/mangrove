@@ -11,7 +11,11 @@ module Mangrove.Scheme.Unix
   , OptionInfo(..)
   , CommandInfo(..)
   , UnixScheme(..)
+  , Token(..)
   , addHelpOptions
+  , collectOptions
+  , selectSubtable
+  , renderTables
   , renderHelp
   ) where
 
@@ -323,6 +327,17 @@ renderTables =
       <> renderHeader cmds
       <> renderOptionTable desc
   ) mempty
+
+selectSubtable
+  :: [Text]
+  -> Map [CommandInfo] [OptionHelp]
+  -> Map [CommandInfo] [OptionHelp]
+selectSubtable cmds table =
+  Map.filterWithKey (\infos _ -> isParentCommand cmds infos) table
+
+isParentCommand :: [Text] -> [CommandInfo] -> Bool
+isParentCommand cmds =
+  and . zipWith (\cmd info -> cmd `elem` cmdNames info) cmds
 
 renderHelp
   :: Text -- ^ Global name (e.g. the program name)
