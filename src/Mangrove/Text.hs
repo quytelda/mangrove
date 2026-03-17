@@ -9,6 +9,8 @@ module Mangrove.Text
     Render(..)
   , renderLazyText
   , renderText
+  , putBuilder
+  , hPutBuilder
 
     -- * Helpers
   , keyEqualsValue
@@ -22,6 +24,8 @@ import qualified Data.Text              as T
 import qualified Data.Text.Lazy         as TL
 import           Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as TLB
+import qualified Data.Text.Lazy.IO      as TLIO
+import           System.IO
 
 -- | A class for things that can be rendered to a text 'Builder'.
 class Render a where
@@ -44,6 +48,12 @@ renderLazyText = TLB.toLazyText . render
 
 renderText :: Render a => a -> Text
 renderText = TL.toStrict . TLB.toLazyText . render
+
+putBuilder :: Builder -> IO ()
+putBuilder = TLIO.putStr . TLB.toLazyText
+
+hPutBuilder :: Handle -> Builder -> IO ()
+hPutBuilder handle = TLIO.hPutStr handle . TLB.toLazyText
 
 --------------------------------------------------------------------------------
 -- Utility Functions
