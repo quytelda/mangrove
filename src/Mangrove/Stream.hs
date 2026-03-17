@@ -28,6 +28,7 @@ module Mangrove.Stream
   , getContext
   , setContext
   , withContext
+  , renderError
   , throwWithContext
 
     -- * Stream
