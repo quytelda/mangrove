@@ -25,9 +25,7 @@ module Mangrove.Scheme.Unix
 
     -- * Help
   , addHelpOptions
-  , collectOptions
-  , selectSubtable
-  , renderTables
+  , renderHelp
   ) where
 
 import           Control.Applicative
@@ -354,3 +352,16 @@ selectSubtable cmds table =
 isParentCommand :: [Text] -> [CommandInfo] -> Bool
 isParentCommand cmds =
   and . zipWith (\cmd info -> cmd `elem` cmdNames info) cmds
+
+-- | Render formatted help information for all commands and options
+-- that exist underneath the current command context.
+renderHelp
+  :: ParseTree UnixScheme r
+  -> [Token UnixScheme] -- ^ Context Stack
+  -> Builder
+renderHelp tree contexts =
+  renderTables
+  $ selectSubtable commandContext
+  $ collectOptions tree
+  where
+    commandContext = reverse [s | UnixCommand s <- contexts]

@@ -67,15 +67,11 @@ parseArguments tree name description action = do
       hPutBuilder stderr $ renderError contexts err <> "\n"
       exitFailure
     HelpRequest contexts -> do
-      let cmds = [s | UnixCommand s <- contexts]
-          subIndex = selectSubtable (reverse cmds) helpIndex
       putBuilder
         $ "Usage: " <> render name <> " " <> render tree <> "\n\n"
         <> render description <> "\n"
-        <> renderTables subIndex
+        <> renderHelp tree contexts
       exitSuccess
-  where
-    helpIndex = collectOptions tree
 
 --------------------------------------------------------------------------------
 -- Tree-building Combinators
