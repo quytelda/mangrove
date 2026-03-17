@@ -15,7 +15,7 @@ data Result tok r
   = Success [Text] r
   | Failure [tok] Builder
   | HelpRequest [tok]
-  deriving (Show)
+  deriving (Eq, Show)
 
 -- | Satiate a 'ParseTree' with all the input it can consume, then
 -- attempt to evaluate it.
