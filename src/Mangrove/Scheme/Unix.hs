@@ -23,22 +23,23 @@ import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.Except
 import           Data.Char
-import qualified Data.List              as List
-import           Data.List.NonEmpty     (NonEmpty)
-import qualified Data.List.NonEmpty     as NonEmpty
-import           Data.Map.Strict        (Map)
-import qualified Data.Map.Strict        as Map
+import qualified Data.List               as List
+import           Data.List.NonEmpty      (NonEmpty)
+import qualified Data.List.NonEmpty      as NonEmpty
+import           Data.Map.Strict         (Map)
+import qualified Data.Map.Strict         as Map
 import           Data.String
-import           Data.Text              (Text)
-import qualified Data.Text              as T
-import qualified Data.Text.Lazy         as TL
-import qualified Data.Text.Lazy.Builder as TLB
+import           Data.Text               (Text)
+import qualified Data.Text               as T
+import qualified Data.Text.Lazy          as TL
+import qualified Data.Text.Lazy.Builder  as TLB
 
+import           Mangrove.ArgumentParser
 import           Mangrove.ParseTree
 import           Mangrove.Resolve
 import           Mangrove.Scheme
-import           Mangrove.Scheme.Sub    (SubScheme)
-import qualified Mangrove.Scheme.Sub    as Sub
+import           Mangrove.Scheme.Sub     (SubScheme)
+import qualified Mangrove.Scheme.Sub     as Sub
 import           Mangrove.Stream
 import           Mangrove.Text
 import           Mangrove.TextParser
@@ -160,38 +161,35 @@ instance Scheme UnixScheme where
     let splitArgs s = if multary subtree
                       then T.split (== ',') s
                       else [s]
-        parseSubargs args =
-          runTreeParser subtree
-          StreamHandler
-          { onSuccess = \state result -> pure (result, streamContent state)
-          , onEmpty = flip throwWithContext "empty"
-          , onFailure = throwWithContext
-          , onHelpRequest = const requestHelp
-          }
-          StreamState
+        initState args = StreamState
           { streamContent = args
           , streamContext = []
           , streamEscaped = not $ Sub.hasSubOptions subtree
           }
+        parseSubargs args =
+          case runArgumentParser' subtree (initState args) of
+            Success leftover result -> pure (leftover, result)
+            Failure contexts err    -> throwError $ renderError contexts err
+            HelpRequest _           -> requestHelp
 
     withContext (UnixOption flag mbound) $ do
       mnext <- peekMaybe
       case (mbound, mnext) of
         (Just argString, _) -> do
-          (result, leftover) <- parseSubargs (splitArgs argString)
+          (leftover, result) <- parseSubargs (splitArgs argString)
           forM_ leftover $ \arg ->
             throwError $ "unrecognized subargument: " <> render arg
           pure result
         (_, Just argString) -> do
           let args = splitArgs argString
-          (result, leftover) <- parseSubargs args
+          (leftover, result) <- parseSubargs args
           when (length args /= length leftover) $ do
             forM_ leftover $ \arg ->
               throwError $ "unrecognized subargument: " <> render arg
             pop_
           pure result
         _ -> do
-          (result, _) <- parseSubargs []
+          (_, result) <- parseSubargs []
           pure result
 
   activate (Command info subtree) = do

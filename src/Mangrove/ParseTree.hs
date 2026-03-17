@@ -12,14 +12,12 @@ module Mangrove.ParseTree
   , AcceptsParameters(..)
   , defaultParameter
   , satiate
-  , runTreeParser
   ) where
 
 import           Control.Applicative
 import           Control.Monad.Except
 import           Data.Kind
 import           Data.Proxy
-import           Data.Text            (Text)
 
 import           Mangrove.Resolve
 import           Mangrove.Scheme
@@ -169,23 +167,3 @@ satiate tree = do
   case result of
     Just tree' -> satiate tree'
     Nothing    -> pure tree
-
--- | Satiate a 'ParseTree' with all the input it can consume, then
--- attempt to evaluate it.
-runTreeParser
-  :: Scheme s
-  => ParseTree s r -- ^ Parser expression tree
-  -> StreamHandler (Token s) r a
-  -> StreamState (Token s) -- ^ Initial state and input
-  -> a
-runTreeParser tree handler =
-  runStreamParser (satiate tree)
-  handler { onSuccess = evaluateResult }
-  where
-    evaluateResult _state tree' =
-      case resolve tree' of
-        Right value -> onSuccess handler _state value
-        Left err ->
-          case streamContent _state of
-            (token:_) -> onFailure handler _state $ "unexpected " <> render token
-            _         -> onFailure handler _state $ render err
