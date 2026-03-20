@@ -13,6 +13,7 @@ parsers.
 module Mangrove.Unix
   ( -- * Types
     UnixParser
+  , SubParser
   , parseArguments
 
     -- * Tree-building Combinators
@@ -35,7 +36,7 @@ import           System.IO
 
 import           Mangrove.ArgumentParser
 import           Mangrove.ParseTree
-import           Mangrove.Scheme.Sub     (SubScheme)
+import           Mangrove.Scheme.Sub     (SubParser)
 import qualified Mangrove.Scheme.Sub     as Sub
 import           Mangrove.Scheme.Unix
 import           Mangrove.Stream
@@ -76,15 +77,15 @@ parseArguments tree name description action = do
 
 parameter
   :: TextParser r
-  -> ParseTree UnixScheme r
+  -> UnixParser r
 parameter = ParseNode . Parameter
 
 -- | Define a general CLI option.
 option
   :: NonEmpty Flag
   -> Text
-  -> ParseTree SubScheme r
-  -> ParseTree UnixScheme r
+  -> SubParser r
+  -> UnixParser r
 option flags help = ParseNode . Option (OptionInfo flags help)
 
 -- | Define a CLI option which takes no parameter and produces a pure value.
@@ -92,26 +93,26 @@ optionPure
   :: NonEmpty Flag
   -> Text
   -> a
-  -> ParseTree UnixScheme a
+  -> UnixParser a
 optionPure flags help = ParseNode . Option (OptionInfo flags help) . pure
 
 -- | Define a CLI option which produces 'True' if present and 'False'
 -- otherwise.
-switch :: NonEmpty Flag -> Text -> ParseTree UnixScheme Bool
+switch :: NonEmpty Flag -> Text -> UnixParser Bool
 switch flags help = optionPure flags help True <|> pure False
 
 -- | Define a CLI subcommand with it's own parsing subtree.
 command
   :: NonEmpty Text
   -> Text
-  -> ParseTree UnixScheme r
-  -> ParseTree UnixScheme r
+  -> UnixParser r
+  -> UnixParser r
 command cmds help = ParseNode . Command (CommandInfo cmds help)
 
 -- | Define a subparameter to a CLI option.
-subparameter :: TextParser a -> ParseTree SubScheme a
+subparameter :: TextParser a -> SubParser a
 subparameter = ParseNode . Sub.Parameter
 
 -- | Define a suboption to a CLI option.
-suboption :: Text -> TextParser a -> ParseTree SubScheme a
+suboption :: Text -> TextParser a -> SubParser a
 suboption key = ParseNode . Sub.Option key
