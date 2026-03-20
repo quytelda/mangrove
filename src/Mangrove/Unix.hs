@@ -16,6 +16,7 @@ module Mangrove.Unix
   , parseArguments
 
     -- * Tree-building Combinators
+  , parameter
   , option
   , optionPure
   , switch
@@ -75,6 +76,11 @@ parseArguments tree name description action = do
 
 --------------------------------------------------------------------------------
 -- Tree-building Combinators
+
+parameter
+  :: TextParser r
+  -> ParseTree UnixScheme r
+parameter = ParseNode . Parameter
 
 -- | Define a general CLI option.
 option

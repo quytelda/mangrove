@@ -23,10 +23,6 @@ module Mangrove.ParseTree
 
     -- * Feeding Trees
   , satiate
-
-    -- * Generic Parameters
-  , AcceptsParameters(..)
-  , defaultParameter
   ) where
 
 import           Control.Applicative
@@ -38,7 +34,6 @@ import           Mangrove.Resolve
 import           Mangrove.Scheme
 import           Mangrove.Stream
 import           Mangrove.Text
-import           Mangrove.TextParser
 import           Mangrove.Valency
 
 -- | `ParseTree scheme r` is an expression tree composed of parsers
@@ -173,16 +168,3 @@ satiate tree = do
   case result of
     Just tree' -> satiate tree'
     Nothing    -> pure tree
-
---------------------------------------------------------------------------------
--- Generics
-
--- | A typeclass for parser schemes that accepts some kind of freeform
--- parameter.
-class AcceptsParameters s where
-  parameter :: TextParser a -> ParseTree s a
-
--- | A parameter that uses the 'DefaultParser' implementation to
--- automatically provide a parser for this expected result type.
-defaultParameter :: (AcceptsParameters p, DefaultParser r) => ParseTree p r
-defaultParameter = parameter defaultParser

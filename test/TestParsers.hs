@@ -6,7 +6,6 @@ module TestParsers where
 import           Control.Applicative
 import           Data.Text            (Text)
 
-import           Mangrove.ParseTree
 import           Mangrove.Scheme.Unix
 import           Mangrove.TextParser
 import           Mangrove.Unix
@@ -18,23 +17,24 @@ opt_e_unit :: UnixParser ()
 opt_e_unit = option [ShortFlag 'e'] "" $ pure ()
 
 opt_e_param :: UnixParser Text
-opt_e_param = option [ShortFlag 'e'] "" defaultParameter
+opt_e_param = option [ShortFlag 'e'] "" $ subparameter defaultParser
 
 opt_f_unit :: UnixParser ()
 opt_f_unit = option [ShortFlag 'f'] "" $ pure ()
 
 opt_example_param :: UnixParser Text
-opt_example_param = option [LongFlag "example"] "" defaultParameter
+opt_example_param = option [LongFlag "example"] "" $ subparameter defaultParser
 
 opt_example_switch :: UnixParser Bool
 opt_example_switch = switch [LongFlag "example"] ""
 
 opt_example_param_optional :: UnixParser Text
 opt_example_param_optional =
-  option [LongFlag "example"] "" (defaultParameter <|> pure "asdf")
+  option [LongFlag "example"] ""
+  $ subparameter defaultParser <|> pure "asdf"
 
 param_text :: UnixParser Text
-param_text = defaultParameter
+param_text = parameter defaultParser
 
 option_asdf :: UnixParser Text
 option_asdf = option ["--asdf", "-a"] "" $ pure "qwer"
@@ -47,8 +47,8 @@ cmd_example_tree = command ["example"] "" $ command ["asdf"] "" $ pure "qwer"
 
 opt_example_pair :: UnixParser (Int, Int)
 opt_example_pair = option ["--example"] "" $ (,)
-  <$> defaultParameter
-  <*> defaultParameter
+  <$> subparameter defaultParser
+  <*> subparameter defaultParser
 
 opt_example_subopt :: UnixParser Text
 opt_example_subopt =

@@ -48,9 +48,6 @@ instance Resolve SubScheme where
   resolve (Option key (TextParser hint _)) =
     throwError $ ExpectedError [TLB.fromText key <> "=" <> TLB.fromText hint]
 
-instance AcceptsParameters SubScheme where
-  parameter = ParseNode . Parameter
-
 instance Scheme SubScheme where
   data Token SubScheme
     = SubAssoc Text Text -- ^ A "KEY=VALUE" argument

@@ -120,9 +120,6 @@ instance Resolve UnixScheme where
   resolve (Command info _) =
     throwError $ ExpectedError [render (cmdHead info)]
 
-instance AcceptsParameters UnixScheme where
-  parameter = ParseNode . Parameter
-
 parseUnixOption :: Alternative f => Text -> f (Flag, Maybe Text)
 parseUnixOption (T.stripPrefix "--" -> Just s)
   | not (T.null s) =
