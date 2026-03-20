@@ -80,6 +80,9 @@ optionSpec = do
       it "yields a default value" $ do
         runArgumentParser opt_example_param_optional ["--example"]
           `shouldBe` Success [] "asdf"
+      it "does not consume subsequent options" $ do
+        runArgumentParser opt_example_param_optional ["--example", "--option"]
+          `shouldBe` Success ["--option"] "asdf"
     context "when an argument is provided" $ do
       it "parses the argument" $ do
         runArgumentParser opt_example_param_optional ["--example", "qwer"]

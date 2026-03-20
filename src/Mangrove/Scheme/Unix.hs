@@ -132,6 +132,10 @@ parseUnixOption (T.stripPrefix "-" >=> T.uncons -> Just (k,v))
     pure (ShortFlag k, if T.null v then Nothing else Just v)
 parseUnixOption _ = empty
 
+isMarked :: Text -> Bool
+isMarked "-" = False
+isMarked s   = "-" `T.isPrefixOf` s
+
 instance Scheme UnixScheme where
   data Token UnixScheme
     = UnixArgument Text -- ^ A freeform argument that is not an option or command
@@ -154,7 +158,7 @@ instance Scheme UnixScheme where
     -- is always accepted since this is commonly used to represent
     -- stdin.
     escaped <- getEscaped
-    guard $ escaped || next == "-" || not ("-" `T.isPrefixOf` next)
+    guard $ escaped || not (isMarked next)
 
     withContext (UnixArgument next) $
       pop_ *> runTextParser tp next
@@ -189,14 +193,15 @@ instance Scheme UnixScheme where
           forM_ leftover $ \arg ->
             throwError $ "unrecognized subargument: " <> render arg
           pure result
-        (_, Just argString) -> do
-          let args = splitArgs argString
-          (leftover, result) <- parseSubargs args
-          when (length args /= length leftover) $ do
-            forM_ leftover $ \arg ->
-              throwError $ "unrecognized subargument: " <> render arg
-            pop_
-          pure result
+        (_, Just argString)
+          | not (isMarked argString) -> do
+              let args = splitArgs argString
+              (leftover, result) <- parseSubargs args
+              when (length args /= length leftover) $ do
+                forM_ leftover $ \arg ->
+                  throwError $ "unrecognized subargument: " <> render arg
+                pop_
+              pure result
         _ -> do
           (_, result) <- parseSubargs []
           pure result
