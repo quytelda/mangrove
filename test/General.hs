@@ -4,12 +4,10 @@
 module General (spec) where
 
 import           Control.Applicative
-import           Data.Either
 
 import           Test.Hspec
 
 import           Mangrove.ArgumentParser
-import           Mangrove.ParseTree
 import           Mangrove.Scheme.Unix
 import           Mangrove.Text
 

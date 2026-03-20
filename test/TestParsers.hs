@@ -6,8 +6,6 @@ module TestParsers where
 import           Control.Applicative
 import           Data.Text            (Text)
 
-import           Test.Hspec
-
 import           Mangrove.ParseTree
 import           Mangrove.Scheme.Unix
 import           Mangrove.TextParser
@@ -61,4 +59,3 @@ opt_home_create =
   option ["--home"] "Specify home directory and whether to create it" $ (,)
   <$> subparameter defaultParser
   <*> (suboption "create" defaultParser <|> pure False)
-
