@@ -15,6 +15,7 @@ module Mangrove.Scheme.Sub
   ( -- * Types
     SubScheme(..)
   , Token(..)
+  , SubParser
 
     -- * Properties
   , hasSubOptions
@@ -83,6 +84,9 @@ instance Scheme SubScheme where
 instance Render (Token SubScheme) where
   render (SubAssoc key value) = render key <> "=" <> render value
   render (SubArgument value)  = render value
+
+-- | Type alias for SubScheme parse trees.
+type SubParser = ParseTree SubScheme
 
 -- | Check whether a parse tree contains any suboption parsers. This
 -- allows us to determine if we need to parse "KEY=VALUE" pairs.

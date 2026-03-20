@@ -42,9 +42,6 @@ import           Mangrove.Stream
 import           Mangrove.Text
 import           Mangrove.TextParser
 
--- | Convenient type alias for Unix-flavored parse trees.
-type UnixParser = ParseTree UnixScheme
-
 -- | Parse the command line arguments passed to the program, then
 -- invoke the program's entrypoint with the results of the parsing. If
 -- parsing fails, we instead display an error to stderr and exit.

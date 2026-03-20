@@ -22,6 +22,7 @@ module Mangrove.Scheme.Unix
     -- * Unix Scheme
   , UnixScheme(..)
   , Token(..)
+  , UnixParser
 
     -- * Help
   , addHelpOptions
@@ -233,6 +234,9 @@ instance Render (Token UnixScheme) where
   render (UnixOption f@(LongFlag _) Nothing)   = render f
   render (UnixOption f@(ShortFlag _) (Just v)) = render f <> render v
   render (UnixOption f@(ShortFlag _) Nothing)  = render f
+
+-- | Convenient type alias for Unix-flavored parse trees.
+type UnixParser = ParseTree UnixScheme
 
 --------------------------------------------------------------------------------
 -- Help
