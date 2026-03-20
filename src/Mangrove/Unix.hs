@@ -14,6 +14,8 @@ module Mangrove.Unix
   ( -- * Types
     UnixParser
   , SubParser
+
+    -- * Running Parsers
   , parseArguments
 
     -- * Tree-building Combinators
@@ -24,6 +26,10 @@ module Mangrove.Unix
   , command
   , subparameter
   , suboption
+
+  -- Re-exports
+  , TextParser(..)
+  , defaultParser
   ) where
 
 import           Control.Applicative
