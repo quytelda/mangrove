@@ -34,7 +34,7 @@ mkuser [--uid=INT] [--system] [--groups=GROUP...] USERNAME
 First, let's create a new record that captures the program's runtime
 configuration.
 
-```
+```haskell
 data Settings = Settings
   { userId     :: Maybe Int -- ^ An optional target user ID
   , userSystem :: Bool -- ^ Is this a system user?
@@ -49,7 +49,7 @@ runs the program accordingly. However, since this is just an example
 program, we won't actually create any user accounts; instead we'll
 just have the program print its settings to `stdout`.
 
-```
+```haskell
 run :: Settings -> IO ()
 run = print
 ```
@@ -70,7 +70,7 @@ Note: This example uses the language extensions `OverloadedLists` and
 
 Let's start by defining the `--uid` option:
 
-```
+```haskell
 opt_uid :: UnixParser Int
 opt_uid = option ["--uid", "-u"] 
           "Specify a user ID" 
@@ -105,7 +105,7 @@ any subarguments - it is either present (`True`) or absent (`False`).
 This special type of option is a "switch", and we can use the `switch`
 function to create it:
 
-```
+```haskell
 opt_system :: UnixParser Bool
 opt_system = switch ["--system", "-s"] "Create a system user"
 
@@ -126,7 +126,7 @@ the reason options have an entire subparser tree. We can use `some`
 (from `Control.Applicative`) to convert a parser that yields an `a`
 into a parser that yields a list of one or more `a`s.
 
-```
+```haskell
 opt_groups :: UnixParser [Text]
 opt_groups =
   option ["--groups", "-g"]
@@ -145,7 +145,7 @@ Finally, our program needs one last input: the username. Since we
 always require this input, we define it as a "parameter" instead of an
 option. We create it using the `parameter` function:
 
-```
+```haskell
 prm_name :: UnixParser Text
 prm_name = parameter defaultParser
 ```
@@ -155,7 +155,7 @@ prm_name = parameter defaultParser
 We are now ready to construct our `Settings` parser using `<$>` and
 `<*>`:
 
-```
+```haskell
 parseSettings :: UnixParser Settings
 parseSettings =
   Settings
@@ -179,7 +179,7 @@ We can run parsers using the `parseArguments` function, which will run
 our parser with the arguments passed to our program by the operating
 system.
 
-```
+```haskell
 main :: IO ()
 main = parseArguments parseSettings "mkuser" "Create user accounts" run
 ```
@@ -199,7 +199,7 @@ to pass your own argument list, check out `runArgumentParser` from
 
 Here is the full example program:
 
-```
+```haskell
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
 
