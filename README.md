@@ -233,6 +233,59 @@ If you want to run an argument parser without using `IO`, or you want
 to pass your own argument list, check out `runArgumentParser` from
 `Mangrove.ArgumentParser`.
 
+Now we have a complete program we can build and run to show the
+argument parser in action!
+
+```
+$ ghc -o mkuser MkUser.hs
+[1 of 2] Compiling Main             ( MkUser.hs, MkUser.o )
+[2 of 2] Linking mkuser
+
+$ ./mkuser --system --groups audio,input bilbo
+Settings {userId = Nothing, userSystem = True, userGroups = ["audio","input"], userName = "bilbo"}
+
+$ ./mkuser --badinput
+unexpected --badinput
+
+$ ./mkuser --system
+expected: STRING
+
+$ ./mkuser --uid=InvalidNumber bilbo
+--uid=InvalidNumber: InvalidNumber: input does not start with a digit
+```
+
+## Help Options
+
+Currently, our CLI interface is missing something important: an option
+for displaying help and usage information. Let's create a new
+`Settings` parser that recognizes `--help` as a request for help
+information.
+
+```haskell
+parseSettings' :: UnixParser Settings
+parseSettings' = addHelpOptions ["--help"]
+                 "Display help and usage information"
+                 parseSettings
+
+main :: IO ()
+main = parseArguments parseSettings' "mkuser" "Create user accounts" run
+```
+
+Now if we invoke our program with the `--help` option, it will display
+a nice summary of how to use it:
+
+```
+./mkuser --help
+Usage: mkuser --help|[--uid=INT] [--system] [--groups=STRING...] STRING
+
+Create user accounts
+
+    --help               Display help and usage information
+-g  --groups  STRING...  Specify what groups the user is part of
+-s  --system             Create a system user
+-u  --uid     INT        Specify a user ID
+```
+
 ## Full Example
 
 Here is the full example program:
