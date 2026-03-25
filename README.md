@@ -209,7 +209,8 @@ ghci> render parseSettings
 This output indicates that our parser accepts (but does not require) a
 `--uid` option with an integer subargument, a `--system` option, and a
 `--groups` option with a list of string subarguments. Finally, it
-requires a single parameter, which is a string.
+requires a single parameter, which is a string. We'll see how to
+improve the type hints later.
 
 ## Running the Parser
 
@@ -284,6 +285,44 @@ Create user accounts
 -g  --groups  STRING...  Specify what groups the user is part of
 -s  --system             Create a system user
 -u  --uid     INT        Specify a user ID
+```
+
+## Hints
+
+Type hints are displayed as placeholders for parameters in help and
+usage information and act as a hint to the user about what kind of
+information is expected by that input. For example, `--uid=INT`
+indicates the `--uid` option expects an integer as a subargument.
+Hints stored inside `TextParser` records as the `parserHint` field.
+
+Our program makes use of the default hints associated with the
+implementations of `defaultParser` for `Int` and `Text`, which is
+reasonable. However, we can also tailor the hints more specifically to
+our use case:
+
+```
+opt_groups :: UnixParser [Text]
+opt_groups =
+  option ["--groups", "-g"]
+  "Specify what groups the user is part of"
+  $ some $ subparameter defaultParser {parserHint = "GROUP"}
+
+prm_name :: UnixParser Text
+prm_name = parameter defaultParser {parserHint = "USERNAME"}
+```
+
+Now our help output looks like this:
+
+```
+./mkuser --help
+Usage: mkuser --help|[--uid=INT] [--system] [--groups=GROUP...] USERNAME
+
+Create user accounts
+
+    --help              Display help and usage information
+-g  --groups  GROUP...  Specify what groups the user is part of
+-s  --system            Create a system user
+-u  --uid     INT       Specify a user ID
 ```
 
 ## Full Example
