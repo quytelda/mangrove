@@ -23,6 +23,8 @@ input has been absorbed.
 
 ## Example
 
+__NOTE__: See the full example file in `doc/MkUser.hs`.
+
 Suppose we are writing a simple program that creates new user
 accounts - we'll call it "mkuser". The goal will be to provide a
 command line interface with the following syntax:
@@ -323,62 +325,4 @@ Create user accounts
 -g  --groups  GROUP...  Specify what groups the user is part of
 -s  --system            Create a system user
 -u  --uid     INT       Specify a user ID
-```
-
-## Full Example
-
-Here is the full example program:
-
-```haskell
-{-# LANGUAGE OverloadedLists   #-}
-{-# LANGUAGE OverloadedStrings #-}
-
-import           Control.Applicative
-import           Data.Text           (Text)
-import           Mangrove.Unix
-
-data Settings = Settings
-  { userId     :: Maybe Int -- ^ An optional target user ID
-  , userSystem :: Bool -- ^ Is this a system user?
-  , userGroups :: [Text] -- ^ Groups the new user will be in
-  , userName   :: Text  -- ^ Username for the new user
-  } deriving (Show)
-
-run :: Settings -> IO ()
-run = print
-
-opt_uid :: UnixParser Int
-opt_uid = option ["--uid", "-u"]
-          "Specify a user ID"
-          $ subparameter defaultParser
-
-opt_system :: UnixParser Bool
-opt_system = switch ["--system", "-s"] "Create a system user"
-
-opt_groups :: UnixParser [Text]
-opt_groups =
-  option ["--groups", "-g"]
-  "Specify what groups the user is part of"
-  $ some $ subparameter defaultParser
-
-prm_name :: UnixParser Text
-prm_name = parameter $ defaultParser
-
-parseSettings :: UnixParser Settings
-parseSettings =
-  Settings
-  <$> optional opt_uid
-  <*> opt_system
-  <*> (opt_groups <|> pure [])
-  <*> prm_name
-
-main :: IO ()
-main = parseArguments parseSettings "mkuser" "Create user accounts" run
-```
-
-Build with `ghc -o mkuser Example.hs` and run:
-
-```
-$ ./mkuser --system --groups audio,input foo
-Settings {userId = Nothing, userSystem = True, userGroups = ["audio","input"], userName = "foo"}
 ```
