@@ -59,3 +59,7 @@ opt_home_create =
   option ["--home"] "Specify home directory and whether to create it" $ (,)
   <$> subparameter defaultParser
   <*> (suboption "create" defaultParser <|> pure False)
+
+withHelp :: UnixParser r -> UnixParser r
+withHelp = addHelpOptions ["--help"]
+           "Display help and usage information"

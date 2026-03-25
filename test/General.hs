@@ -116,14 +116,14 @@ optionSpec = do
   describe "help options" $ do
     context "when a help option is present" $ do
       it "requests help" $ do
-        runArgumentParser (addHelpOptions ["--help"] opt_example_unit) ["--help"]
+        runArgumentParser (withHelp opt_example_unit) ["--help"]
           `shouldBe` HelpRequest [UnixOption (LongFlag "help") Nothing]
       it "works for subcommands" $ do
-        runArgumentParser (addHelpOptions ["--help"] cmd_example_tree) ["example", "--help"]
+        runArgumentParser (withHelp cmd_example_tree) ["example", "--help"]
           `shouldBe` HelpRequest [ UnixOption (LongFlag "help") Nothing
                                  , UnixCommand "example"
                                  ]
-        runArgumentParser (addHelpOptions ["--help"] cmd_example_tree) ["example", "asdf", "--help"]
+        runArgumentParser (withHelp cmd_example_tree) ["example", "asdf", "--help"]
           `shouldBe` HelpRequest [ UnixOption (LongFlag "help") Nothing
                                  , UnixCommand "asdf"
                                  , UnixCommand "example"
@@ -131,12 +131,12 @@ optionSpec = do
 
     context "when a help option is absent" $ do
       it "doesn't request help" $ do
-        runArgumentParser (addHelpOptions ["--help"] opt_example_unit) ["--example"]
+        runArgumentParser (withHelp opt_example_unit) ["--example"]
           `shouldBe` Success [] ()
-        runArgumentParser (addHelpOptions ["--help"] opt_example_unit) []
+        runArgumentParser (withHelp opt_example_unit) []
           `shouldBe` Failure [] "expected: --help or --example"
       it "isn't activated by escaped options" $ do
-        runArgumentParser (addHelpOptions ["--help"] opt_example_unit) ["--", "--help"]
+        runArgumentParser (withHelp opt_example_unit) ["--", "--help"]
           `shouldBe` Failure [] "unexpected --help"
 
 generalSpec :: Spec

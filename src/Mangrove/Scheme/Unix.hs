@@ -248,13 +248,17 @@ type UnixParser = ParseTree UnixScheme
 
 -- | Automatically insert a help option at the top level of the tree
 -- and every subcommand tree.
-addHelpOptions :: NonEmpty Flag -> ParseTree UnixScheme r -> ParseTree UnixScheme r
-addHelpOptions flags tree = ParseNode helpOption <|> go tree
+addHelpOptions
+  :: NonEmpty Flag
+  -> Text
+  -> ParseTree UnixScheme r
+  -> ParseTree UnixScheme r
+addHelpOptions flags desc tree = ParseNode helpOption <|> go tree
   where
     helpOption :: UnixScheme a
     helpOption =
       Option
-      (OptionInfo flags "Display help and usage information")
+      (OptionInfo flags desc)
       HelpNode
 
     go :: ParseTree UnixScheme a -> ParseTree UnixScheme a

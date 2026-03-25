@@ -30,6 +30,7 @@ module Mangrove.Unix
   -- Re-exports
   , TextParser(..)
   , defaultParser
+  , addHelpOptions
   ) where
 
 import           Control.Applicative
