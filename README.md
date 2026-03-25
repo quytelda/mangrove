@@ -206,6 +206,11 @@ ghci> render parseSettings
 "[--uid=INT] [--system] [--groups=STRING...] STRING"
 ```
 
+This output indicates that our parser accepts (but does not require) a
+`--uid` option with an integer subargument, a `--system` option, and a
+`--groups` option with a list of string subarguments. Finally, it
+requires a single parameter, which is a string.
+
 ## Running the Parser
 
 We can run parsers using the `parseArguments` function, which will run
