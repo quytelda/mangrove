@@ -21,7 +21,7 @@ how to combine results from their children. Thus, the tree represents
 a kind of suspended computation that can be evaluated once enough
 input has been absorbed.
 
-## An Example
+## Example
 
 Suppose we are writing a simple program that creates new user
 accounts - we'll call it "mkuser". The goal will be to provide a
@@ -54,21 +54,64 @@ run :: Settings -> IO ()
 run = print
 ```
 
-Now, we want to convert the list of arguments passed to the program
-into a `Settings` record. To do this, we need construct a `UnixParser
+Now we need to construct a parser that reads a list of arguments and
+yields a `Settings`. Our parser will have the type `UnixParser
 Settings`. `UnixParser` is just a convenient type synonym for
-`ParseTree UnixScheme`, so what we are actually constructing here is a
-Unix-style parse tree that produces a `Settings` when fed the proper
-inputs and evaluated. We will build up the tree from smaller parsers
-using the power of `Applicative`.
+`ParseTree UnixScheme`, so what we are actually constructing here is
+an expression tree, built up by combining "UNIX-flavored" parsers
+using the `Applicative` interface.
 
-Note: This example uses the language extensions `OverloadedLists` and
-`OverloadedStrings` since we need to write lots of `NonEmpty` list and
-`Text` literals.
+__Note__: This example uses the language extensions `OverloadedLists`
+and `OverloadedStrings` since we need to write lots of `NonEmpty` list
+and `Text` literals.
+
+## Parameters
+
+A "parameter" is a positional input that accepts a free argument. For
+example, consider a program called `substring` whose command line
+syntax is `substring START END STRING`. `START`, `END`, and `STRING`
+are parameters. If we invoked `substring 1 3 "example"`, we know that
+`START` is `1`, `END` is `3`, and `STRING` is `"example"` because of
+the order in which they appear.
+
+Our program will have just one parameter: a username. Here is how we
+define a parser for it:
+
+```haskell
+prm_name :: UnixParser Text
+prm_name = parameter defaultParser
+```
+
+The `parameter` function creates a parameter parser out of a
+`TextParser` (see below).
+
+### TextParsers
+
+A `TextParser r` is just a wrapper around a function that parses raw
+`Text` and yields a value of type `r`. It also contains a "hint" for
+displaying usage information. The library provides parsers for many
+common types of input (such as `Text`, `Bool`, `Int`, etc.) via the
+polymorphic `defaultParser :: DefaultParser a => TextParser a`, which
+selects an appropriate parser based on the type.
 
 ## Options
 
-Let's start by defining the `--uid` option:
+An "option" is a construct that represents a labelled input. Options
+are triggered by the presence of a particular flag followed by any
+subarguments.
+
+A "flag" is special symbol that signals the presence of an option. Per
+UNIX tradition there are long flags (e.g. `--foo`) and short flags
+(e.g `-f`).
+
+Sometimes, to prevent ambiguity, an option's long flag is separated
+from its subarguments by an equals sign instead of a space. For
+example, `--uid=1000` is an option that begins with the `--uid` flag
+and is followed by the subargument `1000`. Similarly, an option's
+short flag can be directly concatenated with its argument, e.g. `-u
+1000` can be written `-u1000`.
+
+Let's define a parser for the `--uid` option:
 
 ```haskell
 opt_uid :: UnixParser Int
@@ -77,16 +120,16 @@ opt_uid = option ["--uid", "-u"]
 		  $ subparameter defaultParser
 ```
 
-The `option` function (which defines a CLI option parser) takes three
+The `option` function creates a parser for CLI options. It takes three
 arguments:
 
 1. A list of `Flag`s that trigger the option, in this case "--uid" and
-   "-u". This is a `NonEmpty` list, so passing `[]` would not
-   typecheck. Flag is an instance of `IsString`, so we can just write
-   the string representation for convenience.
-2. A human readable help string. This will be displayed when help
-   output is triggered.
-3. A subtree parser that defines any subparameters or suboptions. In
+   "-u". The list has type `NonEmpty Flag`, so we can't use an empty
+   list. `Flag` is an instance of `IsString`, so we can just write the
+   string representation for convenience.
+2. A human readable help text. This will be displayed when help output
+   is triggered.
+3. A subparser tree that handles any subparameters or suboptions. In
    this case, we declare a single subparameter (an integer). There is
    a `DefaultParser` instance for `Int`, so we can use `defaultParser`
    instead of manually writing a `TextParser`.
@@ -100,16 +143,16 @@ is absent, the parser will produce `Nothing`.
 
 ### Switches
 
-The `--system` option will simpler because because it doesn't accept
-any subarguments - it is either present (`True`) or absent (`False`).
-This special type of option is a "switch", and we can use the `switch`
-function to create it:
+The `--system` option is simpler because because it doesn't accept any
+subarguments - it is either present (`True`) or absent (`False`). This
+special type of option is a "switch", and we can use the `switch`
+function to create a parser:
 
 ```haskell
 opt_system :: UnixParser Bool
 opt_system = switch ["--system", "-s"] "Create a system user"
 
--- If defined this without 'switch' it would look like this:
+-- If we defined this without 'switch' it would look like this:
 -- opt_system = option ["--system", "-s"] 
 --              "Create a system user"
 --              (pure True)
@@ -120,8 +163,9 @@ opt_system = switch ["--system", "-s"] "Create a system user"
 ### Options with Multiple Subparameters
 
 Let's deal with the `--groups` option. This option is a bit different
-than the `--uid` option because we want the user to be able to specify
-a list of groups for the new user to join. Situations like this are
+from the `--uid` option because we want the user to be able to specify
+a list of groups for the new user to join. Thus, we want to create an
+option that accepts one or more subarguments. Situations like this are
 the reason options have an entire subparser tree. We can use `some`
 (from `Control.Applicative`) to convert a parser that yields an `a`
 into a parser that yields a list of one or more `a`s.
@@ -135,20 +179,9 @@ opt_groups =
 ```
 
 Mangrove automatically recognizes option parsers that can consume
-multiple subarguments, and comma-separates their inputs. That means we
+multiple subarguments and comma-separates their inputs. That means we
 can specify multiple groups like so: `--groups wheel,audio,input` and
 we will get `["wheel","audio","input"]`.
-
-## Parameters
-
-Finally, our program needs one last input: the username. Since we
-always require this input, we define it as a "parameter" instead of an
-option. We create it using the `parameter` function:
-
-```haskell
-prm_name :: UnixParser Text
-prm_name = parameter defaultParser
-```
 
 ## Applicative
 
@@ -165,8 +198,8 @@ parseSettings =
   <*> prm_name
 ```
 
-Now we can inspect our parser in GHCi using `render` from
-`Mangrove.Text`:
+Now we can inspect the automatically generated usage information for
+our parser in GHCi using `render` from `Mangrove.Text`:
 
 ```
 ghci> render parseSettings
@@ -252,13 +285,3 @@ Build with `ghc -o mkuser Example.hs` and run:
 $ ./mkuser --system --groups audio,input foo
 Settings {userId = Nothing, userSystem = True, userGroups = ["audio","input"], userName = "foo"}
 ```
-
-## Definitions
-
-A "flag" is special symbol that signals the presence of an option. Per
-UNIX tradition there are long flags (e.g. `--foo`) and short flags
-(e.g `-f`).
-
-An "option" is a construct that represents a named input. Options
-are triggered by the presence of a particular flag, and might accept
-further input.
