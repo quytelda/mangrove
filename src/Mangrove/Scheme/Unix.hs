@@ -332,12 +332,19 @@ renderHeader :: [CommandInfo] -> Builder
 renderHeader [] = mempty
 renderHeader cmds@(info : _) =
   fmtCommand cmds
-  <> " command: "
+  <> " command"
+  <> aliasInfo
+  <> ": "
   <> render (cmdHelp info)
   <> "\n"
   where
     quote m = "\"" <> m <> "\""
     fmtCommand = quote . render . T.unwords . fmap cmdHead . reverse
+    aliases = NonEmpty.tail $ cmdNames info
+    aliasInfo =
+      if null aliases
+      then mempty
+      else " (alt: " <> render (T.intercalate ", " aliases) <> ")"
 
 -- | Format an index of commands and options for help output display.
 renderTables :: Map [CommandInfo] [OptionHelp] -> Builder
