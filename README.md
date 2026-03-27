@@ -289,6 +289,13 @@ Create user accounts
 -u  --uid     INT        Specify a user ID
 ```
 
+__NOTE__: If an interface defines any commands (see below),
+`addHelpOptions` will add a help option at the root of the parse tree
+as well as the root of every command subtree. This is so that you can
+invoke `myprogram --help` to get general help or `myprogram
+somecommand --help` to get help information specifically for
+`somecommand`.
+
 ## Hints
 
 Type hints are displayed as placeholders for parameters in help and
@@ -325,4 +332,39 @@ Create user accounts
 -g  --groups  GROUP...  Specify what groups the user is part of
 -s  --system            Create a system user
 -u  --uid     INT       Specify a user ID
+```
+
+## Commands
+
+A "command" is a special argument changes the context of a parser.
+When a command is encountered, the parser begins using the parse tree
+associated with that command as a new context until it completes.
+Commands are usually used as a way to invoke different modes of
+functionality for a single program. For example, `git` supports
+various commands like `commit` or `pull`.
+
+Suppose we are creating a basic version control system similar to
+`git`. Our program will have several runtime modes for doing
+operations like `commit` or `pull`. Here is how we might define a
+parser that recognizes the corresponding commands (for the full code,
+see `doc/VersionControl.hs`):
+
+```haskell
+data Mode
+  = CommitMode CommitSettings
+  | PullMode PullSettings
+  -- ... and probably other modes too
+  deriving (Show)
+
+parseMode :: UnixParser Mode
+parseMode = cmd_commit <|> cmd_pull
+  where
+    cmd_commit =
+      command ["commit"]
+      "Make a new commit"
+      $ CommitMode <$> parseCommitSettings
+    cmd_pull =
+      command ["pull"]
+      "Download remote changes"
+      $ PullMode <$> parsePullSettings
 ```
