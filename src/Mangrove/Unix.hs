@@ -82,6 +82,7 @@ parseArguments tree name description action = do
 --------------------------------------------------------------------------------
 -- Tree-building Combinators
 
+-- | Create a parameter parser from a 'TextParser'.
 parameter
   :: TextParser r
   -> UnixParser r

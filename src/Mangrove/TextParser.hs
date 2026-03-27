@@ -44,6 +44,7 @@ runTextParser tp = liftEither . parserRun tp
 -- | A typeclass for types that have a convenient default
 -- 'TextParser'.
 class DefaultParser r where
+  -- | A reasonable default TextParser implementation.
   defaultParser :: TextParser r
 
 exactly :: TR.Reader a -> Text -> Either Builder a
