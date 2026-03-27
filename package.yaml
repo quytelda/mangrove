@@ -1,4 +1,4 @@
-name:                mangrove
+name:                mangrove-cli
 version:             0.1.0.0
 github:              "quytelda/mangrove"
 license:             BSD-3-Clause
@@ -41,7 +41,7 @@ library:
   source-dirs: src
 
 tests:
-  mangrove-test:
+  mangrove-cli-test:
     main:                Main.hs
     source-dirs:         test
     ghc-options:
@@ -49,5 +49,5 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - mangrove
+    - mangrove-cli
     - hspec >= 2.9 && < 3
