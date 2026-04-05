@@ -52,14 +52,27 @@ import           Data.Text            (Text)
 import           Mangrove.Text
 
 -- | The current state of a stream parser.
+--
+-- The content of a stream is just a list of 'Text' values. The
+-- context stack is a list of tokens currently being processed; when a
+-- token is recognized, it gets added to front of the list while the
+-- token is being parsed into a usable value. When this parsing
+-- completes, the token is popped from the front of the list.
+--
+-- A streams can also enable "escaped" mode by setting 'streamEscaped'
+-- to 'True'. What this actually does is parser-dependant, but usually
+-- it restricts how subsequent arguments can be interpreted. For
+-- example, in the Unix scheme, escaping forces all subsequent
+-- arguments to be interpreted as positional arguments, even if they
+-- would normally be interpreted as options or commands.
 data StreamState tok = StreamState
   { streamContent :: [Text] -- ^ A sequence of 'Text' values
   , streamContext :: [tok]  -- ^ A stack representing current parsing context
   , streamEscaped :: Bool   -- ^ Escaped mode
   } deriving (Eq, Show)
 
--- | Continuations to be called for each situation a stream parser
--- might encounter.
+-- | A collection of continuations to be called for each situation a
+-- stream parser might encounter.
 data StreamHandler tok a r = StreamHandler
   { onSuccess     :: StreamState tok -> a -> r -- ^ Success Continuation
   , onEmpty       :: StreamState tok -> r -- ^ Empty continuation
@@ -67,9 +80,9 @@ data StreamHandler tok a r = StreamHandler
   , onHelpRequest :: StreamState tok -> r -- ^ Help Continuation
   } deriving (Functor)
 
--- | The amazing stream parsing monad! This monad is comparable to a
--- combination of StateT, ExceptT, and MaybeT. It tracks the stream
--- state and handles pure exceptions.
+-- | The amazing stream parsing monad! This monad tracks the stream
+-- state and context. It short-circuits when exceptions or
+-- help-requests are raised.
 newtype StreamParser tok a = StreamParser
   { runStreamParser
     :: forall r. StreamHandler tok a r
@@ -104,12 +117,12 @@ instance MonadError Builder (StreamParser tok) where
     handler { onFailure = \_ err -> runStreamParser (recover err) handler state }
     state
 
--- | Enable or disable escaped parsing. When escaped parsing is
--- enabled, we should treat all arguments as atomic units (i.e. as
--- freeform parameters) regardless of any syntactic markings
--- indicating otherwise. For example, in the unix-style scheme,
--- "--example" would normally be interpreted as a long flag, but if
--- escaping is on, it should be treated as a parameter instead.
+-- | Enable or disable escaped parsing. What this actually does is
+-- parser-dependant, but usually it restricts how subsequent arguments
+-- can be interpreted. For example, in the Unix scheme, escaping
+-- forces all subsequent arguments to be interpreted as positional
+-- arguments, even if they would normally be interpreted as options or
+-- commands.
 setEscaped :: Bool -> StreamParser tok ()
 setEscaped b = StreamParser $ \handler state ->
   onSuccess handler state { streamEscaped = b } ()
@@ -119,8 +132,8 @@ getEscaped :: StreamParser tok Bool
 getEscaped = StreamParser $ \handler state ->
   onSuccess handler state (streamEscaped state)
 
--- | Escape normal parsing and signal that help information was
--- requested.
+-- | Signal that help information is requested. Short-circuits any
+-- further operations.
 requestHelp :: StreamParser tok a
 requestHelp = StreamParser onHelpRequest
 
@@ -142,7 +155,7 @@ withContext context action = do
   setContext $ context : oldContext
   action <* setContext oldContext
 
--- | Combine an error message with context information.
+-- | Format an error message with context information.
 renderError :: Render tok => [tok] -> Builder -> Builder
 renderError contexts err =
   mconcat
