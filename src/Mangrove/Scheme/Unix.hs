@@ -63,6 +63,10 @@ import           Mangrove.Valency
 -- double dash (e.g. "--example") followed by a string while short
 -- flags start with only a single dash (e.g. "-e") and are identified
 -- by a single character.
+--
+-- For convenience, 'Flag' is an instance of 'Data.String.IsString'.
+-- Thus, you can write @"--flop"@ instead of @LongFlag "flop"@ and
+-- @"-c"@ instead of @ShortFlag \'c\'@.
 data Flag
   = LongFlag Text
   | ShortFlag Char
@@ -121,6 +125,9 @@ instance Resolve UnixScheme where
   resolve (Command info _) =
     throwError $ ExpectedError [render (cmdHead info)]
 
+-- | A parser for interpreting options. An option always begins with a
+-- flag, followed optionally by an "=" sign and a bound argument. The
+-- strings "--" and "-" are not treated as options.
 parseUnixOption :: Alternative f => Text -> f (Flag, Maybe Text)
 parseUnixOption (T.stripPrefix "--" -> Just s)
   | not (T.null s) =
@@ -132,6 +139,8 @@ parseUnixOption (T.stripPrefix "-" >=> T.uncons -> Just (k,v))
     pure (ShortFlag k, if T.null v then Nothing else Just v)
 parseUnixOption _ = empty
 
+-- | Does this text look like a flag? We check whether it starts with
+-- "-" followed by any other character.
 isMarked :: Text -> Bool
 isMarked "-" = False
 isMarked s   = "-" `T.isPrefixOf` s
@@ -153,10 +162,9 @@ instance Scheme UnixScheme where
   activate (Parameter tp) = do
     next <- peek
 
-    -- Arguments that begin with a dash aren't considered free
-    -- arguments unless escaping is enabled. However, the string "-"
-    -- is always accepted since this is commonly used to represent
-    -- stdin.
+    -- Arguments that begin with a dash should never be treated as
+    -- unbound subarguments. However, the string "-" is always
+    -- accepted since this is commonly used to represent stdin.
     escaped <- getEscaped
     guard $ escaped || not (isMarked next)
 
@@ -171,6 +179,19 @@ instance Scheme UnixScheme where
     guard $ flag `elem` optFlags info
     pop_
 
+    -- We need to convert whatever argument string we have (if any)
+    -- into a list of subarguments as input for the subparser. If the
+    -- subtree accepts multiple arguments, we split the input by
+    -- comma. Otherwise, we can just pass a singleton list containing
+    -- the argument string.
+    --
+    -- If the subtree contains no suboptions, we enable escaping to
+    -- prevent arguments containing an "=" sign from being interpreted
+    -- as suboptions. This is necessary because individual
+    -- subparameter parsers have no way to determine that such an
+    -- argument won't be consumed by a subsequent suboption parser.
+    -- Escaping forces subparameter parsers to consume the argument,
+    -- regardless of its form.
     let splitArgs s = if multary subtree
                       then T.split (== ',') s
                       else [s]
@@ -186,6 +207,18 @@ instance Scheme UnixScheme where
             HelpRequest _           -> requestHelp
 
     withContext (UnixOption flag mbound) $ do
+      -- If a bound argument (e.g. --floop=blah) is provided, we
+      -- expect it to be consumed by the subparser. If it isn't fully
+      -- consumed, we have nothing to do with the leftovers, so we
+      -- throw an error.
+      --
+      -- If there's no bound argument but the next regular argument
+      -- doesn't look like an option, then we try running the
+      -- subparser using that as input. If it is fully consumed, we
+      -- pop it from the front of the stream. If nothing is consumed,
+      -- we leave it at the head of the stream. However, if it is
+      -- partially consumed, then something has gone wrong, and we
+      -- throw an error.
       mnext <- peekMaybe
       case (mbound, mnext) of
         (Just argString, _) -> do
