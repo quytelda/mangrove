@@ -1,25 +1,25 @@
-# mangrove
+# Mangrove
 
 Mangrove is a library for writing command line argument parsers using
-Haskell's Applicative interface.
+Haskell's `Applicative` interface. It provides parsers for UNIX-style
+command line syntax, including positional parameters, named options,
+and commands, as well as complex subparameters and suboptions (e.g.
+`--mount read-only,src=/dev/sda1,dst=/data`). It is also extensible,
+so you can define alternative command line syntaxes.
 
 ## A Metaphor
 
-Imagine the roots of a tree. The roots branch out as they grow
-downward, eventually dipping into a stream. As the stream flows by,
-the roots collect water and nutrients which they pass back up the root
-structure. Along the way, the nutrient flows combine and consolidate
-until they reach a single source - the plant.
+Imagine the roots of a plant branching out like a tree as they
+descend. Eventually, they dip into a stream. The roots collect water
+and nutrients from the flowing stream. These resources travel back up
+the structure toward the plant, combining along the way.
 
-That is roughly how this argument parsing library works. Argument
-parsers are expression trees whose leaves are mostly either values or
-specific parsers for things like options or subcommands. The leaf
-parsers consume and parse inputs they recognize. Once they complete,
-they are removed from the tree and replaced with whatever result value
-they generated. Meanwhile, nonterminal nodes contain information about
-how to combine results from their children. Thus, the tree represents
-a kind of suspended computation that can be evaluated once enough
-input has been absorbed.
+This is kind of like how the Mangrove library works. We build a
+tree-shaped parser from simple applicative combinators then feed it a
+sequence of CLI arguments. Simple parsers stationed at the bottom of
+the tree consume these arguments and produce values which are then
+passed back up the tree and combined with the results of other parsers
+until a final result is reached.
 
 ## Example
 
@@ -58,23 +58,24 @@ run = print
 
 Now we need to construct a parser that reads a list of arguments and
 yields a `Settings`. Our parser will have the type `UnixParser
-Settings`. `UnixParser` is just a convenient type synonym for
-`ParseTree UnixScheme`, so what we are actually constructing here is
-an expression tree, built up by combining "UNIX-flavored" parsers
-using the `Applicative` interface.
+Settings`.
 
-__Note__: This example uses the language extensions `OverloadedLists`
+__NOTE__: This example uses the language extensions `OverloadedLists`
 and `OverloadedStrings` since we need to write lots of `NonEmpty` list
 and `Text` literals.
 
+__NOTE__: `UnixParser` is just a convenient type synonym for
+`ParseTree UnixScheme`. This tells us that we will build a `ParseTree`
+by combining parsers from the Unix scheme.
+
 ## Parameters
 
-A "parameter" is a positional input that accepts a free argument. For
-example, consider a program called `substring` whose command line
-syntax is `substring START END STRING`. `START`, `END`, and `STRING`
-are parameters. If we invoked `substring 1 3 "example"`, we know that
-`START` is `1`, `END` is `3`, and `STRING` is `"example"` because of
-the order in which they appear.
+A "parameter" is a positional input that accepts the first non-flag
+argument it encounters. For example, consider a program called
+`substring` whose command line syntax is `substring START END STRING`.
+`START`, `END`, and `STRING` are parameters. If we invoke `substring 1
+3 "example"`, we know that `START` is `1`, `END` is `3`, and `STRING`
+is `"example"` because of the order in which they appear.
 
 Our program will have just one parameter: a username. Here is how we
 define a parser for it:
@@ -89,59 +90,70 @@ The `parameter` function creates a parameter parser out of a
 
 ### TextParsers
 
-A `TextParser r` is just a wrapper around a function that parses raw
-`Text` and yields a value of type `r`. It also contains a "hint" for
-displaying usage information. The library provides parsers for many
-common types of input (such as `Text`, `Bool`, `Int`, etc.) via the
-polymorphic `defaultParser :: DefaultParser a => TextParser a`, which
-selects an appropriate parser based on the type.
+A `TextParser r` is just a wrapper around a function that parses
+`Text` into a value of type `r`. It also contains a "hint" string used
+for displaying usage information.
+
+Many common data types have a reasonable default `TextParser`
+implementation. Types that are instances of the `DefaultParser` class
+implement `defaultParser :: DefaultParser a => TextParser a`, letting
+us automatically select the correct parser based on the required type.
+
+In the example above, `Text` has a very simple `DefaultParser`
+instance that just returns its input unchanged.
 
 ## Options
 
-An "option" is a construct that represents a labelled input. Options
-are triggered by the presence of a particular flag followed by any
-subarguments.
+An "option" is a construct representing a named input. Options begin
+with a flag followed by an optional subargument string.
 
-A "flag" is special symbol that signals the presence of an option. Per
-UNIX tradition there are long flags (e.g. `--foo`) and short flags
-(e.g `-f`).
+A "flag" is special symbol that signals the beginning of a particular
+option. Per UNIX tradition there are long flags (e.g. `--foo`) and
+short flags (e.g `-f`).
 
-Sometimes, to prevent ambiguity, an option's long flag is separated
-from its subarguments by an equals sign instead of a space. For
+To prevent ambiguity, sometimes an equals sign is used to separate a
+long flag from its subargument string (instead of a space). For
 example, `--uid=1000` is an option that begins with the `--uid` flag
-and is followed by the subargument `1000`. Similarly, an option's
-short flag can be directly concatenated with its argument, e.g. `-u
-1000` can be written `-u1000`.
+and is followed by the subargument string `1000`. Similarly, an
+option's short flag can be directly concatenated with its argument,
+e.g. `-u 1000` can be written `-u1000`.
 
 Let's define a parser for the `--uid` option:
 
 ```haskell
 opt_uid :: UnixParser Int
-opt_uid = option ["--uid", "-u"] 
-          "Specify a user ID" 
+opt_uid = option ["--uid", "-u"]
+          "Specify a user ID"
 		  $ subparameter defaultParser
 ```
 
 The `option` function creates a parser for CLI options. It takes three
 arguments:
 
-1. A list of `Flag`s that trigger the option, in this case "--uid" and
-   "-u". The list has type `NonEmpty Flag`, so we can't use an empty
-   list. `Flag` is an instance of `IsString`, so we can just write the
-   string representation for convenience.
-2. A human readable help text. This will be displayed when help output
-   is triggered.
-3. A subparser tree that handles any subparameters or suboptions. In
-   this case, we declare a single subparameter (an integer). There is
-   a `DefaultParser` instance for `Int`, so we can use `defaultParser`
-   instead of manually writing a `TextParser`.
+1. A `NonEmpty` list of `Flag`s that trigger the option, in this case
+   "--uid" and "-u". `Flag` is an instance of `IsString`, so we can
+   just write the string representation instead of `LongFlag "uid"`
+   and `ShortFlag 'u'`.
+2. A human readable description. This will be displayed when help
+   output is triggered.
+3. A subparser tree (`SubParser r`) that will parse any subparameters or
+   suboptions. In this case, we declare a single subparameter (an
+   integer).
 
-You might notice building our `Settings` record requires a `Maybe
-Int`, not an `Int`. However, since `UnixParser` (and more generally
-`ParseTree s` for any functor `s`) is an instance of `Alternative`, we
-can use `optional` from `Control.Applicative`, yielding `optional
-opt_uid :: UnixParser (Maybe Int)`. This means if the `--uid` flag
-is absent, the parser will produce `Nothing`.
+The `subparameter` function behaves just like `parameter` from
+earlier, except it creates a `SubParser` instead of a `UnixParser`. We
+also use `defaultParser` to automatically select an appropriate
+`TextParser` for `Int`.
+
+__NOTE__: `SubParser` is a type synonym for `ParseTree SubScheme`.
+That means we build a `SubParser` by combining `SubScheme` parsers.
+`SubScheme` provides parsers for handling subarguments to options.
+
+You might notice that our `Settings` record requires a `Maybe Int`,
+not an `Int`. However, since `UnixParser` is an instance of
+`Alternative`, we can use `optional` from `Control.Applicative`.
+`optional opt_uid :: UnixParser (Maybe Int)` describes an option that
+is not required and might be absent (which should give us `Nothing`).
 
 ### Switches
 
@@ -155,7 +167,7 @@ opt_system :: UnixParser Bool
 opt_system = switch ["--system", "-s"] "Create a system user"
 
 -- If we defined this without 'switch' it would look like this:
--- opt_system = option ["--system", "-s"] 
+-- opt_system = option ["--system", "-s"]
 --              "Create a system user"
 --              (pure True)
 --              <|> pure False
@@ -167,10 +179,11 @@ opt_system = switch ["--system", "-s"] "Create a system user"
 Let's deal with the `--groups` option. This option is a bit different
 from the `--uid` option because we want the user to be able to specify
 a list of groups for the new user to join. Thus, we want to create an
-option that accepts one or more subarguments. Situations like this are
-the reason options have an entire subparser tree. We can use `some`
-(from `Control.Applicative`) to convert a parser that yields an `a`
-into a parser that yields a list of one or more `a`s.
+option that accepts one or more subarguments.
+
+Thankfully, `SubParser` is also an `Alternative` instance. We can use
+`some` (from `Control.Applicative`) to convert a `SubParser r` into a
+`SubParser [r]` that will expect to parse one or more `r` values.
 
 ```haskell
 opt_groups :: UnixParser [Text]
@@ -180,10 +193,37 @@ opt_groups =
   $ some $ subparameter defaultParser
 ```
 
-Mangrove automatically recognizes option parsers that can consume
-multiple subarguments and comma-separates their inputs. That means we
-can specify multiple groups like so: `--groups wheel,audio,input` and
-we will get `["wheel","audio","input"]`.
+Mangrove recognizes that the subparser `some $ subparameter
+defaultParser :: SubParser [Text]` can consume multiple subarguments,
+so it splits those subarguments apart by comma. This allows us to pass
+a list of group names like so: `--groups=wheel,audio,input`, and the
+parser will yield `["wheel","audio","input"]`.
+
+By using `some` instead of the similar function `many`, we have
+created a subparser that will fail if no subarguments are provided
+(e.g. `mkuser alice --groups`).
+
+What if the `--groups` option isn't present at all? We still need a
+`[Text]` value for our `Settings` record. In that case, an empty list
+makes sense. Just like with our `--uid` option, we use `Alternative`
+to define what happens if our parser never finds applicable input.
+
+```
+opt_groups <|> pure [] :: UnixParser [Text]
+```
+
+__NOTE__: There is an important distinction between a parser that
+never finds relevant input and a parser that fails. In an expression
+like `opt_groups <|> pure []`, if `opt_groups` never finds relevant
+input, the alternative provides a default value. However, if
+`opt_groups` *does* find applicable input, but parsing it fails, an
+error will be thrown instead.
+
+More generally, if `p` and `q` are parsers, then `p <|> q` is a parser
+that yields the result from whichever parser finds applicable input
+first. If neither parser finds input, we first try resolving `p` and
+then `q` with no input and yield the first result we get. If neither
+succeeds, we throw an error.
 
 ## Applicative
 
@@ -212,13 +252,12 @@ This output indicates that our parser accepts (but does not require) a
 `--uid` option with an integer subargument, a `--system` option, and a
 `--groups` option with a list of string subarguments. Finally, it
 requires a single parameter, which is a string. We'll see how to
-improve the type hints later.
+improve those type hints later.
 
 ## Running the Parser
 
-We can run parsers using the `parseArguments` function, which will run
-our parser with the arguments passed to our program by the operating
-system.
+The `parseArguments` function will run our parser with the arguments
+passed to our program by the operating system.
 
 ```haskell
 main :: IO ()
@@ -229,8 +268,8 @@ main = parseArguments parseSettings "mkuser" "Create user accounts" run
 the program (for help output), a description of the program (also for
 help output), and a function of type `r -> IO a`. When the parser
 completes successfully, this function will be called with the result.
-Otherwise, the parser will print error messages or help information as
-appropriate.
+Otherwise, `parseArguments` will print error messages or help
+information as appropriate.
 
 If you want to run an argument parser without using `IO`, or you want
 to pass your own argument list, check out `runArgumentParser` from
@@ -299,15 +338,16 @@ somecommand --help` to get help information specifically for
 ## Hints
 
 Type hints are displayed as placeholders for parameters in help and
-usage information and act as a hint to the user about what kind of
+usage information. They are a hint to the user about what kind of
 information is expected by that input. For example, `--uid=INT`
 indicates the `--uid` option expects an integer as a subargument.
-Hints stored inside `TextParser` records as the `parserHint` field.
+Hints stored inside the `parserHint` field of a `TextParser`.
 
-Our program makes use of the default hints associated with the
-implementations of `defaultParser` for `Int` and `Text`, which is
-reasonable. However, we can also tailor the hints more specifically to
-our use case:
+Our program uses the generic hints defined in the `DefaultParser`
+instances for `Int` and `Text`. These defaults are often reasonable,
+but we can also tailor hints more specifically for our use case. All
+we need to do is alter the value of `parserHint` for the relevant
+`TextParser`.
 
 ```
 opt_groups :: UnixParser [Text]
