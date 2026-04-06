@@ -268,10 +268,9 @@ instance Scheme UnixScheme where
 instance Render (Token UnixScheme) where
   render (UnixArgument s)                      = render s
   render (UnixCommand s)                       = render s
+  render (UnixOption f Nothing)                = render f
   render (UnixOption f@(LongFlag _) (Just v))  = render f <> "=" <> render v
-  render (UnixOption f@(LongFlag _) Nothing)   = render f
   render (UnixOption f@(ShortFlag _) (Just v)) = render f <> render v
-  render (UnixOption f@(ShortFlag _) Nothing)  = render f
 
 -- | Convenient type alias for Unix-flavored parse trees.
 type UnixParser = ParseTree UnixScheme
