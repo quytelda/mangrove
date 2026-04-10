@@ -55,6 +55,12 @@ data ParseTree (scheme :: Type -> Type) (r :: Type) where
   -- | Abstracts 'many' (@MaybeNode False@) and 'some' (@MaybeNode True@)
   ManyNode :: Bool -> ParseTree scheme r -> ParseTree scheme [r]
 
+instance Semigroup (ParseTree s a) where
+  l <> r = SumNode l r
+
+instance Monoid (ParseTree s a) where
+  mempty = EmptyNode
+
 instance Functor p => Functor (ParseTree p) where
   fmap _ EmptyNode          = EmptyNode
   fmap _ HelpNode           = HelpNode
