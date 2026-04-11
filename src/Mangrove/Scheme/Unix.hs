@@ -32,7 +32,6 @@ module Mangrove.Scheme.Unix
 import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.Except
-import           Data.Char
 import qualified Data.List               as List
 import           Data.List.NonEmpty      (NonEmpty)
 import qualified Data.List.NonEmpty      as NonEmpty
@@ -74,9 +73,9 @@ data Flag
 
 instance IsString Flag where
   fromString ('-':'-':name)
-    | not (null name) && all isAlphaNum name = LongFlag $ T.pack name
+    | not (null name) = LongFlag $ T.pack name
   fromString ['-', c]
-    | isAlphaNum c = ShortFlag c
+    | c /= '-' = ShortFlag c
   fromString s = error $ "not a valid flag: " <> s
 
 instance Render Flag where
