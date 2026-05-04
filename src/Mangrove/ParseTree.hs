@@ -19,6 +19,9 @@ parser scheme that determines the kind of inputs it accepts.
 module Mangrove.ParseTree
   ( -- * Types
     ParseTree(..)
+  , isProduct
+  , isSum
+  , isOptional
   , nullary
 
     -- * Feeding Trees
@@ -54,6 +57,19 @@ data ParseTree (scheme :: Type -> Type) (r :: Type) where
   SumNode :: ParseTree scheme r -> ParseTree scheme r -> ParseTree scheme r
   -- | Abstracts 'many' (@MaybeNode False@) and 'some' (@MaybeNode True@)
   ManyNode :: Bool -> ParseTree scheme r -> ParseTree scheme [r]
+
+isProduct :: ParseTree s r -> Bool
+isProduct (ProdNode {}) = True
+isProduct _             = False
+
+isSum :: ParseTree s r -> Bool
+isSum (SumNode {}) = True
+isSum _            = False
+
+isOptional :: ParseTree s r -> Bool
+isOptional (SumNode _ (ValueNode {})) = True
+isOptional (ManyNode False _)         = True
+isOptional _                          = False
 
 instance Semigroup (ParseTree s a) where
   l <> r = SumNode l r
@@ -119,16 +135,31 @@ instance Resolve p => Resolve (ParseTree p) where
 
 instance Scheme s => Render (ParseTree s r) where
   -- special cases
-  render (SumNode p (ValueNode _)) = "[" <> render p <> "]"
+  render (SumNode p (ValueNode _)) = brackets $ render p
 
-  render EmptyNode                 = "EMPTY"
-  render HelpNode                  = "HELP"
-  render (ValueNode _)             = "VALUE"
-  render (ParseNode parser)        = usageInfo parser
-  render (ProdNode _ l r)          = render l <> render (delimiter (Proxy @s)) <> render r
-  render (SumNode l r)             = render l <> "|" <> render r
-  render (ManyNode False p)        = "[" <> render p <> "...]"
-  render (ManyNode True p)         = render p <> "..."
+  render EmptyNode     = "EMPTY"
+  render HelpNode      = "HELP"
+  render (ValueNode _) = "VALUE"
+
+  render (ParseNode parser) = usageInfo parser
+
+  render (ProdNode _ l r) =
+    renderWrapped l
+    <> render (delimiter (Proxy @s))
+    <> renderWrapped r
+    where
+      renderWrapped p = bracesIf (isSum p && not (isOptional p)) (render p)
+  render (SumNode l r) =
+    renderWrapped l
+    <> "|"
+    <> renderWrapped r
+    where
+      renderWrapped p = bracesIf (isProduct p) (render p)
+  render (ManyNode required p) = wrap $ render p <> "..."
+    where
+      wrap = if required
+             then braces
+             else brackets
 
 -- | Identify trees that do not accept any input.
 --

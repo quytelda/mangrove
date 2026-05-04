@@ -258,7 +258,7 @@ instance Scheme UnixScheme where
     render flag
     <> if nullary subtree
        then mempty
-       else separator <> render subtree
+       else separator <> bracesIf (isSum subtree) (render subtree)
     where flag = optHead info
           separator = case flag of
                         LongFlag _ -> "="

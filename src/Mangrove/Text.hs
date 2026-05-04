@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs             #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE ViewPatterns      #-}
 
@@ -19,7 +20,12 @@ module Mangrove.Text
   , putBuilder
   , hPutBuilder
 
-    -- * Helpers
+    -- * Helpers & Combinators
+  , between
+  , brackets
+  , bracketsIf
+  , braces
+  , bracesIf
   , keyEqualsValue
 
     -- * Re-exports
@@ -65,6 +71,24 @@ putBuilder = TLIO.putStr . TLB.toLazyText
 -- | Write the contents of a 'Builder' to some IO handle.
 hPutBuilder :: Handle -> Builder -> IO ()
 hPutBuilder handle = TLIO.hPutStr handle . TLB.toLazyText
+
+--------------------------------------------------------------------------------
+-- Combinators
+
+between :: Monoid m => m -> m -> m -> m
+between open close s = open <> s <> close
+
+brackets :: Builder -> Builder
+brackets = between "[" "]"
+
+bracketsIf :: Bool -> Builder -> Builder
+bracketsIf cond = if cond then brackets else id
+
+braces :: Builder -> Builder
+braces = between "{" "}"
+
+bracesIf :: Bool -> Builder -> Builder
+bracesIf cond = if cond then braces else id
 
 --------------------------------------------------------------------------------
 -- Utility Functions
