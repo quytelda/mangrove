@@ -58,19 +58,6 @@ data ParseTree (scheme :: Type -> Type) (r :: Type) where
   -- | Abstracts 'many' (@MaybeNode False@) and 'some' (@MaybeNode True@)
   ManyNode :: Bool -> ParseTree scheme r -> ParseTree scheme [r]
 
-isProduct :: ParseTree s r -> Bool
-isProduct (ProdNode {}) = True
-isProduct _             = False
-
-isSum :: ParseTree s r -> Bool
-isSum (SumNode {}) = True
-isSum _            = False
-
-isOptional :: ParseTree s r -> Bool
-isOptional (SumNode _ (ValueNode {})) = True
-isOptional (ManyNode False _)         = True
-isOptional _                          = False
-
 instance Semigroup (ParseTree s a) where
   l <> r = SumNode l r
 
@@ -133,33 +120,18 @@ instance Resolve p => Resolve (ParseTree p) where
   -- unclear. This avoids infinite loops, but might not be the
   -- expected behavior in some unforseen use-case.
 
-instance Scheme s => Render (ParseTree s r) where
-  -- special cases
-  render (SumNode p (ValueNode _)) = brackets $ render p
+isProduct :: ParseTree s r -> Bool
+isProduct (ProdNode {}) = True
+isProduct _             = False
 
-  render EmptyNode     = "EMPTY"
-  render HelpNode      = "HELP"
-  render (ValueNode _) = "VALUE"
+isSum :: ParseTree s r -> Bool
+isSum (SumNode {}) = True
+isSum _            = False
 
-  render (ParseNode parser) = usageInfo parser
-
-  render (ProdNode _ l r) =
-    renderWrapped l
-    <> render (delimiter (Proxy @s))
-    <> renderWrapped r
-    where
-      renderWrapped p = bracesIf (isSum p && not (isOptional p)) (render p)
-  render (SumNode l r) =
-    renderWrapped l
-    <> "|"
-    <> renderWrapped r
-    where
-      renderWrapped p = bracesIf (isProduct p) (render p)
-  render (ManyNode required p) = wrap $ render p <> "..."
-    where
-      wrap = if required
-             then braces
-             else brackets
+isOptional :: ParseTree s r -> Bool
+isOptional (SumNode _ (ValueNode {})) = True
+isOptional (ManyNode False _)         = True
+isOptional _                          = False
 
 -- | Identify trees that do not accept any input.
 --
@@ -175,6 +147,35 @@ nullary (ParseNode _)     = False
 nullary (ProdNode _ l r)  = nullary l && nullary r
 nullary (SumNode l r)     = nullary l && nullary r
 nullary (ManyNode _ tree) = nullary tree
+
+instance Scheme s => Render (ParseTree s r) where
+  -- special cases
+  render (SumNode p (ValueNode _)) = brackets $ render p
+
+  render (ParseNode parser) = usageInfo parser
+  render (ProdNode _ l r)
+    | nullary l && nullary r = ""
+    | nullary l = _render r
+    | nullary r = _render l
+    | otherwise = _render l <> render sep <> _render r
+    where
+      _render = renderDelimitedIf braces (\p -> isSum p && not (isOptional p))
+      sep = delimiter (Proxy @s)
+  render (SumNode l r)
+    | nullary l && nullary r = ""
+    | nullary l = _render r
+    | nullary r = _render l
+    | otherwise = _render l <> "|" <> _render r
+    where
+      _render = renderDelimitedIf braces isProduct
+  render (ManyNode required p) = wrap $ render p <> "..."
+    where
+      wrap = if required
+             then braces
+             else brackets
+
+  -- Constant nodes that don't accept input have no usage.
+  render _ = ""
 
 --------------------------------------------------------------------------------
 

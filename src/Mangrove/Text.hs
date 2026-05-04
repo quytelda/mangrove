@@ -23,9 +23,8 @@ module Mangrove.Text
     -- * Helpers & Combinators
   , between
   , brackets
-  , bracketsIf
   , braces
-  , bracesIf
+  , renderDelimitedIf
   , keyEqualsValue
 
     -- * Re-exports
@@ -81,14 +80,11 @@ between open close s = open <> s <> close
 brackets :: Builder -> Builder
 brackets = between "[" "]"
 
-bracketsIf :: Bool -> Builder -> Builder
-bracketsIf cond = if cond then brackets else id
-
 braces :: Builder -> Builder
 braces = between "{" "}"
 
-bracesIf :: Bool -> Builder -> Builder
-bracesIf cond = if cond then braces else id
+renderDelimitedIf :: Render a => (Builder -> Builder) -> (a -> Bool) -> a -> Builder
+renderDelimitedIf wrap f x = (if f x then wrap else id) (render x)
 
 --------------------------------------------------------------------------------
 -- Utility Functions
