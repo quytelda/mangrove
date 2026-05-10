@@ -29,6 +29,7 @@ module Mangrove.Scheme.Unix
   , renderHelp
   ) where
 
+import Data.Maybe
 import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.Except
@@ -250,6 +251,13 @@ instance Scheme UnixScheme where
     withContext (UnixCommand next) $ do
       satiate subtree
       >>= resolveLifted
+
+  exhibitParser p@(Option _ HelpNode) = Exhibit Nothing [Modal True p]
+  exhibitParser (Command info subtree) =
+    Exhibit Nothing $ (Modal False <$> maybeToList mregular) <> modals
+    where
+      Exhibit mregular modals = Command info <$> exhibitTree subtree
+  exhibitParser p = Exhibit (Just p) []
 
   usageInfo (Parameter tp) = render $ parserHint tp
   usageInfo (Command info subtree) =

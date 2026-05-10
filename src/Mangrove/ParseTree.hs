@@ -24,6 +24,8 @@ module Mangrove.ParseTree
   , isOptional
   , nullary
 
+  , exhibitTree
+
     -- * Feeding Trees
   , satiate
   ) where
@@ -31,6 +33,7 @@ module Mangrove.ParseTree
 import           Control.Applicative
 import           Control.Monad.Except
 import           Data.Kind
+import           Data.Maybe
 import           Data.Proxy
 
 import           Mangrove.Resolve
@@ -128,6 +131,7 @@ isSum :: ParseTree s r -> Bool
 isSum (SumNode {}) = True
 isSum _            = False
 
+-- | Does this subtree accept optional input?
 isOptional :: ParseTree s r -> Bool
 isOptional (SumNode _ (ValueNode {})) = True
 isOptional (ManyNode False _)         = True
@@ -147,6 +151,40 @@ nullary (ParseNode _)     = False
 nullary (ProdNode _ l r)  = nullary l && nullary r
 nullary (SumNode l r)     = nullary l && nullary r
 nullary (ManyNode _ tree) = nullary tree
+
+-- | Divide a 'ParseTree' into regular and modal subtrees.
+--
+-- We do this so that we can render usage information for each subtree
+-- separately. This makes the usage of complex commands significantly
+-- easier to read.
+--
+-- NOTE: A 'ParseTree' that has been split apart can no longer be used
+-- for actual parsing - it can only be used for display purposes
+-- (hence the term "Exhibit").
+exhibitTree :: Scheme s => ParseTree s r -> Exhibit (ParseTree s r)
+exhibitTree (SumNode l r) = Exhibit norm (modalsL <> modalsR)
+  where
+    Exhibit normL modalsL = exhibitTree l
+    Exhibit normR modalsR = exhibitTree r
+    norm = liftA2 SumNode normL normR
+           <|> normL
+           <|> normR
+exhibitTree (ProdNode f l r) = Exhibit norm modals
+  where
+    Exhibit normL modalsL = exhibitTree l
+    Exhibit normR modalsR = exhibitTree r
+    node = ProdNode f
+    norm = liftA2 node normL normR
+    cross g modalTrees normalTrees =
+      [ g (if usesTerseOutput m && isOptional n then mempty else n) <$> m
+      | m <- modalTrees
+      , n <- normalTrees
+      ]
+    modals = cross (flip node) modalsL (maybeToList normR)
+             <> cross node modalsR (maybeToList normL)
+             <> [liftA2 node u v | u <- modalsL, v <- modalsR]
+exhibitTree (ParseNode p) = ParseNode <$> exhibitParser p
+exhibitTree n = Exhibit (Just n) []
 
 instance Scheme s => Render (ParseTree s r) where
   -- special cases

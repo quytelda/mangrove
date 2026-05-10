@@ -1,5 +1,5 @@
+{-# LANGUAGE GADTs             #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards   #-}
 
 {-|
 Module      : Mangrove.Unix
@@ -43,6 +43,7 @@ import           System.IO
 
 import           Mangrove.ArgumentParser
 import           Mangrove.ParseTree
+import           Mangrove.Scheme
 import           Mangrove.Scheme.Sub     (SubParser)
 import qualified Mangrove.Scheme.Sub     as Sub
 import           Mangrove.Scheme.Unix
@@ -74,10 +75,14 @@ parseArguments tree name description action = do
       exitFailure
     HelpRequest contexts -> do
       putBuilder
-        $ "Usage: " <> render name <> " " <> render tree <> "\n\n"
+        $ "Usage:\n"
+        <> renderUsages tree <> "\n"
         <> render description <> "\n"
         <> renderHelp tree contexts
       exitSuccess
+  where
+    renderUsageLine s = render name <> " " <> render s <> "\n"
+    renderUsages = foldMap renderUsageLine . exhibitToList . exhibitTree
 
 --------------------------------------------------------------------------------
 -- Tree-building Combinators
