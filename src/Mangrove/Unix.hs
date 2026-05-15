@@ -78,10 +78,15 @@ parseArguments tree name description action = do
       exitFailure
     HelpRequest contexts -> do
       putBuilder
-        $ "Usage: " <> render name <> " " <> render tree <> "\n\n"
+        $ "Usage:\n"
+        <> renderUsages <> "\n"
         <> render description <> "\n"
         <> renderHelp tree contexts
       exitSuccess
+  where
+    renderUsages = mconcat $ fmap (\s -> render name <> " " <> render s <> "\n") $ maybeToList mnorm <> modals
+      where
+        (mnorm, modals) = splitTree tree
 
 --------------------------------------------------------------------------------
 -- Tree-building Combinators
@@ -128,32 +133,3 @@ subparameter = ParseNode . Sub.Parameter
 -- | Define a suboption to a CLI option.
 suboption :: Text -> TextParser a -> SubParser a
 suboption key = ParseNode . Sub.Option key
-
---------------------------------------------------------------------------------
-
--- We traverse the tree looking for sum nodes and modal nodes
--- (HelpNode and command nodes). On the way back up the tree, we wrap
--- the contents of each item in the tree list with the current node.
--- If this node doesn't have any modal subnodes, the tree list is
--- empty. At subnodes, we split each subtree
-
-splitTree :: UnixParser r -> (Maybe (UnixParser r), [UnixParser r])
-splitTree (SumNode l r) = (norm, lmodal <> rmodal)
-  where
-    (lnorm, lmodal) = splitTree l
-    (rnorm, rmodal) = splitTree r
-    norm = (SumNode <$> lnorm <*> rnorm)
-           <|> lnorm
-           <|> rnorm
-splitTree (ProdNode f l r) = (ProdNode f <$> lnorm <*> rnorm, lms <> rms)
-  where
-    (lnorm, lmodal) = splitTree l
-    (rnorm, rmodal) = splitTree r
-    lms = ProdNode f <$> lmodal <*> maybeToList rnorm
-    rms = ProdNode f <$> maybeToList lnorm <*> rmodal
-splitTree n@(ParseNode p) =
-  case p of
-    (Option _ HelpNode) -> (Nothing, [n])
-    (Command _ _)       -> (Nothing, [n])
-    _                   -> (Just n, [])
-splitTree n = (Just n, [])

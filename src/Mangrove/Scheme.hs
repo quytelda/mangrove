@@ -44,6 +44,9 @@ class Resolve s => Scheme (s :: Type -> Type) where
   -- result.
   activate :: s r -> StreamParser (Token s) r
 
+  -- | Split a parser.
+  splitParser :: s r -> (Maybe (s r), [s r])
+
   -- | Render human-readable usage information for a particular
   -- parser.
   usageInfo :: s r -> Builder

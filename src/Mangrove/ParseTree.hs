@@ -24,6 +24,8 @@ module Mangrove.ParseTree
   , isOptional
   , nullary
 
+  , splitTree
+
     -- * Feeding Trees
   , satiate
   ) where
@@ -31,6 +33,7 @@ module Mangrove.ParseTree
 import           Control.Applicative
 import           Control.Monad.Except
 import           Data.Kind
+import           Data.Maybe
 import           Data.Proxy
 
 import           Mangrove.Resolve
@@ -147,6 +150,26 @@ nullary (ParseNode _)     = False
 nullary (ProdNode _ l r)  = nullary l && nullary r
 nullary (SumNode l r)     = nullary l && nullary r
 nullary (ManyNode _ tree) = nullary tree
+
+splitTree :: Scheme s => ParseTree s r -> (Maybe (ParseTree s r), [ParseTree s r])
+splitTree (SumNode l r) = (norm, lmodal <> rmodal)
+  where
+    (lnorm, lmodal) = splitTree l
+    (rnorm, rmodal) = splitTree r
+    norm = (SumNode <$> lnorm <*> rnorm)
+           <|> lnorm
+           <|> rnorm
+splitTree (ProdNode f l r) = (ProdNode f <$> lnorm <*> rnorm, lms <> rms)
+  where
+    (lnorm, lmodal) = splitTree l
+    (rnorm, rmodal) = splitTree r
+    lms = ProdNode f <$> lmodal <*> maybeToList rnorm
+    rms = ProdNode f <$> maybeToList lnorm <*> rmodal
+splitTree (ParseNode p) = (ParseNode <$> mnormal, ParseNode <$> modals)
+  where
+    (mnormal, modals) = splitParser p
+splitTree n = (Just n, [])
+
 
 instance Scheme s => Render (ParseTree s r) where
   -- special cases
