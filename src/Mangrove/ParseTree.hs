@@ -25,6 +25,7 @@ module Mangrove.ParseTree
   , nullary
 
   , splitTree
+  , splitTree'
 
     -- * Feeding Trees
   , satiate
@@ -170,6 +171,27 @@ splitTree (ParseNode p) = (ParseNode <$> mnormal, ParseNode <$> modals)
     (mnormal, modals) = splitParser p
 splitTree n = (Just n, [])
 
+splitTree' :: Scheme s => ParseTree s r -> SplitTree (ParseTree s r)
+splitTree' (SumNode l r) = SplitTree norm (lmodals <> rmodals)
+  where
+    SplitTree lnorm lmodals = splitTree' l
+    SplitTree rnorm rmodals = splitTree' r
+    norm = liftA2 SumNode lnorm rnorm
+           <|> lnorm
+           <|> rnorm
+splitTree' (ProdNode f l r) = SplitTree norm rs
+  where
+    elide (ModalTree e _) = e
+    SplitTree lnorm lmodals = splitTree' l
+    SplitTree rnorm rmodals = splitTree' r
+    node = ProdNode f
+    norm = liftA2 node lnorm rnorm
+    as = [fmap (\t -> node t (if elide u && isOptional v then mempty else v)) u | u <- lmodals, v <- maybeToList rnorm]
+    bs = [fmap (\t -> node (if elide v && isOptional u then mempty else u) t) v | v <- rmodals, u <- maybeToList lnorm]
+    modals = [liftA2 node u v | u <- lmodals, v <- rmodals]
+    rs = as <> bs <> modals
+splitTree' (ParseNode p) = ParseNode <$> splitParser' p
+splitTree' n = SplitTree (Just n) []
 
 instance Scheme s => Render (ParseTree s r) where
   -- special cases

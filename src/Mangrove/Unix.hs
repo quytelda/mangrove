@@ -47,6 +47,7 @@ import           System.IO
 
 import           Mangrove.ArgumentParser
 import           Mangrove.ParseTree
+import           Mangrove.Scheme
 import           Mangrove.Scheme.Sub     (SubParser)
 import qualified Mangrove.Scheme.Sub     as Sub
 import           Mangrove.Scheme.Unix
@@ -84,9 +85,7 @@ parseArguments tree name description action = do
         <> renderHelp tree contexts
       exitSuccess
   where
-    renderUsages = mconcat $ fmap (\s -> render name <> " " <> render s <> "\n") $ maybeToList mnorm <> modals
-      where
-        (mnorm, modals) = splitTree tree
+    renderUsages = mconcat $ fmap (\s -> render name <> " " <> render s <> "\n") $ toTreeList $ splitTree' tree
 
 --------------------------------------------------------------------------------
 -- Tree-building Combinators

@@ -1,4 +1,5 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE TypeFamilies  #-}
 
 {-|
 Module      : Mangrove.Scheme
@@ -11,14 +12,37 @@ arguments into tokens and values.
 -}
 module Mangrove.Scheme
   ( Scheme(..)
+  , ModalTree(..)
+  , SplitTree(..)
+  , toTreeList
   ) where
 
 import           Data.Kind
+import           Data.Maybe
 import           Data.Proxy
 
 import           Mangrove.Resolve
 import           Mangrove.Stream
 import           Mangrove.Text
+
+data ModalTree a = ModalTree Bool a
+  deriving (Functor)
+
+instance Applicative ModalTree where
+  pure = ModalTree False
+  ModalTree elide1 f <*> ModalTree elide2 x = ModalTree (elide1 && elide2) (f x)
+
+data SplitTree a = SplitTree (Maybe a) [ModalTree a]
+  deriving (Functor)
+
+toTreeList :: SplitTree a -> [a]
+toTreeList (SplitTree mnorm modals) = maybeToList mnorm <> modals'
+  where
+    modals' = [t | ModalTree _ t <- modals]
+
+-- instance Applicative SplitTree where
+--   pure a = SplitTree (Just a) []
+--   SplitTree mf
 
 -- | A scheme is a system of parsers and tokens. It parses a sequence
 -- of arguments into tokens and values.
@@ -46,6 +70,8 @@ class Resolve s => Scheme (s :: Type -> Type) where
 
   -- | Split a parser.
   splitParser :: s r -> (Maybe (s r), [s r])
+  splitParser' :: s r -> SplitTree (s r)
+  splitParser' p = SplitTree (Just p) []
 
   -- | Render human-readable usage information for a particular
   -- parser.
