@@ -253,7 +253,8 @@ instance Scheme UnixScheme where
       >>= resolveLifted
 
   splitParser p@(Option _ HelpNode) = SplitTree Nothing [ModalTree True p]
-  splitParser (Command info subtree) = SplitTree Nothing (maybeToList (ModalTree False <$> mregular) <> modals)
+  splitParser (Command info subtree) =
+    SplitTree Nothing $ (ModalTree False <$> maybeToList mregular) <> modals
     where
       SplitTree mregular modals = Command info <$> splitTree subtree
   splitParser p = SplitTree (Just p) []

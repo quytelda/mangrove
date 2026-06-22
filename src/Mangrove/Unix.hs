@@ -1,6 +1,5 @@
 {-# LANGUAGE GADTs             #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards   #-}
 
 {-|
 Module      : Mangrove.Unix
@@ -77,12 +76,13 @@ parseArguments tree name description action = do
     HelpRequest contexts -> do
       putBuilder
         $ "Usage:\n"
-        <> renderUsages <> "\n"
+        <> renderUsages tree <> "\n"
         <> render description <> "\n"
         <> renderHelp tree contexts
       exitSuccess
   where
-    renderUsages = mconcat $ fmap (\s -> render name <> " " <> render s <> "\n") $ toTreeList $ splitTree tree
+    renderUsageLine s = render name <> " " <> render s <> "\n"
+    renderUsages = foldMap renderUsageLine . toTreeList . splitTree
 
 --------------------------------------------------------------------------------
 -- Tree-building Combinators

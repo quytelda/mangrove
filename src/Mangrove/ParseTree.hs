@@ -159,17 +159,21 @@ splitTree (SumNode l r) = SplitTree norm (lmodals <> rmodals)
     norm = liftA2 SumNode lnorm rnorm
            <|> lnorm
            <|> rnorm
-splitTree (ProdNode f l r) = SplitTree norm rs
+splitTree (ProdNode f l r) = SplitTree normCombined modalsCombined
   where
-    elide (ModalTree e _) = e
-    SplitTree lnorm lmodals = splitTree l
-    SplitTree rnorm rmodals = splitTree r
+    terseOutput (ModalTree e _) = e
+    SplitTree normL modalsL = splitTree l
+    SplitTree normR modalsR = splitTree r
     node = ProdNode f
-    norm = liftA2 node lnorm rnorm
-    as = [fmap (\t -> node t (if elide u && isOptional v then mempty else v)) u | u <- lmodals, v <- maybeToList rnorm]
-    bs = [fmap (\t -> node (if elide v && isOptional u then mempty else u) t) v | v <- rmodals, u <- maybeToList lnorm]
-    modals = [liftA2 node u v | u <- lmodals, v <- rmodals]
-    rs = as <> bs <> modals
+    normCombined = liftA2 node normL normR
+    cross g modalTrees normalTrees =
+      [ g (if terseOutput m && isOptional n then mempty else n) <$> m
+      | m <- modalTrees
+      , n <- normalTrees
+      ]
+    modalsCombined = cross (flip node) modalsL (maybeToList normR)
+                     <> cross node modalsR (maybeToList normL)
+                     <> [liftA2 node u v | u <- modalsL, v <- modalsR]
 splitTree (ParseNode p) = ParseNode <$> splitParser p
 splitTree n = SplitTree (Just n) []
 
