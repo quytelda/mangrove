@@ -152,28 +152,28 @@ nullary (SumNode l r)     = nullary l && nullary r
 nullary (ManyNode _ tree) = nullary tree
 
 splitTree :: Scheme s => ParseTree s r -> SplitTree (ParseTree s r)
-splitTree (SumNode l r) = SplitTree norm (lmodals <> rmodals)
+splitTree (SumNode l r) = SplitTree norm (modalsL <> modalsR)
   where
-    SplitTree lnorm lmodals = splitTree l
-    SplitTree rnorm rmodals = splitTree r
-    norm = liftA2 SumNode lnorm rnorm
-           <|> lnorm
-           <|> rnorm
-splitTree (ProdNode f l r) = SplitTree normCombined modalsCombined
+    SplitTree normL modalsL = splitTree l
+    SplitTree normR modalsR = splitTree r
+    norm = liftA2 SumNode normL normR
+           <|> normL
+           <|> normR
+splitTree (ProdNode f l r) = SplitTree norm modals
   where
     terseOutput (ModalTree e _) = e
     SplitTree normL modalsL = splitTree l
     SplitTree normR modalsR = splitTree r
     node = ProdNode f
-    normCombined = liftA2 node normL normR
+    norm = liftA2 node normL normR
     cross g modalTrees normalTrees =
       [ g (if terseOutput m && isOptional n then mempty else n) <$> m
       | m <- modalTrees
       , n <- normalTrees
       ]
-    modalsCombined = cross (flip node) modalsL (maybeToList normR)
-                     <> cross node modalsR (maybeToList normL)
-                     <> [liftA2 node u v | u <- modalsL, v <- modalsR]
+    modals = cross (flip node) modalsL (maybeToList normR)
+             <> cross node modalsR (maybeToList normL)
+             <> [liftA2 node u v | u <- modalsL, v <- modalsR]
 splitTree (ParseNode p) = ParseNode <$> splitParser p
 splitTree n = SplitTree (Just n) []
 
