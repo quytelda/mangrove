@@ -252,11 +252,11 @@ instance Scheme UnixScheme where
       satiate subtree
       >>= resolveLifted
 
-  splitParser' p@(Option _ HelpNode) = SplitTree Nothing [ModalTree True p]
-  splitParser' (Command info subtree) = SplitTree Nothing (maybeToList (ModalTree False <$> mregular) <> modals)
+  splitParser p@(Option _ HelpNode) = SplitTree Nothing [ModalTree True p]
+  splitParser (Command info subtree) = SplitTree Nothing (maybeToList (ModalTree False <$> mregular) <> modals)
     where
-      SplitTree mregular modals = Command info <$> splitTree' subtree
-  splitParser' p = SplitTree (Just p) []
+      SplitTree mregular modals = Command info <$> splitTree subtree
+  splitParser p = SplitTree (Just p) []
 
   usageInfo (Parameter tp) = render $ parserHint tp
   usageInfo (Command info subtree) =

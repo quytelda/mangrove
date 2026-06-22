@@ -65,8 +65,8 @@ class Resolve s => Scheme (s :: Type -> Type) where
   activate :: s r -> StreamParser (Token s) r
 
   -- | Split a parser.
-  splitParser' :: s r -> SplitTree (s r)
-  splitParser' p = SplitTree (Just p) []
+  splitParser :: s r -> SplitTree (s r)
+  splitParser p = SplitTree (Just p) []
 
   -- | Render human-readable usage information for a particular
   -- parser.

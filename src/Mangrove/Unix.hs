@@ -82,7 +82,7 @@ parseArguments tree name description action = do
         <> renderHelp tree contexts
       exitSuccess
   where
-    renderUsages = mconcat $ fmap (\s -> render name <> " " <> render s <> "\n") $ toTreeList $ splitTree' tree
+    renderUsages = mconcat $ fmap (\s -> render name <> " " <> render s <> "\n") $ toTreeList $ splitTree tree
 
 --------------------------------------------------------------------------------
 -- Tree-building Combinators
