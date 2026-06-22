@@ -78,8 +78,6 @@ instance Scheme SubScheme where
           empty
       _ -> empty
 
-  splitParser p = (Just p, [])
-
   usageInfo (Parameter tp)  = render $ parserHint tp
   usageInfo (Option key tp) = render key <> "=" <> render (parserHint tp)
 

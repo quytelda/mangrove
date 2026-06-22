@@ -28,8 +28,6 @@ module Mangrove.Unix
   , subparameter
   , suboption
 
-  , splitTree
-
   -- Re-exports
   , TextParser(..)
   , defaultParser
@@ -38,7 +36,6 @@ module Mangrove.Unix
 
 import           Control.Applicative
 import           Data.List.NonEmpty      (NonEmpty)
-import           Data.Maybe
 import           Data.Text               (Text)
 import qualified Data.Text               as T
 import           System.Environment

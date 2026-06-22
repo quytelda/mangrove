@@ -40,10 +40,6 @@ toTreeList (SplitTree mnorm modals) = maybeToList mnorm <> modals'
   where
     modals' = [t | ModalTree _ t <- modals]
 
--- instance Applicative SplitTree where
---   pure a = SplitTree (Just a) []
---   SplitTree mf
-
 -- | A scheme is a system of parsers and tokens. It parses a sequence
 -- of arguments into tokens and values.
 class Resolve s => Scheme (s :: Type -> Type) where
@@ -69,7 +65,6 @@ class Resolve s => Scheme (s :: Type -> Type) where
   activate :: s r -> StreamParser (Token s) r
 
   -- | Split a parser.
-  splitParser :: s r -> (Maybe (s r), [s r])
   splitParser' :: s r -> SplitTree (s r)
   splitParser' p = SplitTree (Just p) []
 
