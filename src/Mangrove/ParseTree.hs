@@ -22,6 +22,7 @@ module Mangrove.ParseTree
   , isProduct
   , isSum
   , isOptional
+  , isChoice
   , nullary
 
   , exhibitTree
@@ -132,6 +133,10 @@ isOptional (SumNode _ (ValueNode {})) = True
 isOptional (ManyNode False _)         = True
 isOptional _                          = False
 
+-- | Is this a 'SumNode' that does *not* represent an optional input.
+isChoice :: ParseTree s r -> Bool
+isChoice = liftA2 (&&) isSum (not . isOptional)
+
 -- | Identify trees that do not accept any input.
 --
 -- A "nullary" tree contains no parsers (i.e. no 'ParseNode'
@@ -192,7 +197,7 @@ instance Scheme s => Render (ParseTree s r) where
     | nullary r = _render l
     | otherwise = _render l <> render sep <> _render r
     where
-      _render = renderDelimitedIf braces (\p -> isSum p && not (isOptional p))
+      _render = renderDelimitedIf braces isChoice
       sep = delimiter (Proxy @s)
   render (SumNode l r)
     | nullary l && nullary r = ""
