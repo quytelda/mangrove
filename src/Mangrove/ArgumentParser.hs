@@ -56,9 +56,10 @@ runArgumentParser' tree =
     _onFailure = Failure . streamContext
     _onSuccess state' tree' =
       case (streamContent state', resolve tree') of
-        (leftovers, Right result) -> Success leftovers result
-        ([], Left err) -> _onFailure state' $ render err
-        (token:_, _) -> _onFailure state' $ "unexpected " <> render token
+        (leftovers, Value result) -> Success leftovers result
+        ([], EmptyError)          -> _onFailure state' "empty"
+        ([], ExpectedError es)    -> _onFailure state' $ renderExpectedError es
+        (token:_, _)              -> _onFailure state' $ "unexpected " <> render token
     handler = StreamHandler
       { onSuccess = _onSuccess
       , onFailure = _onFailure

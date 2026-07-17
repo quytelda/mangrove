@@ -22,9 +22,7 @@ module Mangrove.Scheme.Sub
   ) where
 
 import           Control.Applicative
-import           Control.Monad.Except
-import           Data.Text              (Text)
-import qualified Data.Text.Lazy.Builder as TLB
+import           Data.Text           (Text)
 
 import           Mangrove.ParseTree
 import           Mangrove.Resolve
@@ -45,9 +43,9 @@ instance Valency SubScheme where
 
 instance Resolve SubScheme where
   resolve (Parameter (TextParser hint _)) =
-    throwError $ ExpectedError [TLB.fromText hint]
+    ExpectedError [render hint]
   resolve (Option key (TextParser hint _)) =
-    throwError $ ExpectedError [TLB.fromText key <> "=" <> TLB.fromText hint]
+    ExpectedError [render key <> "=" <> render hint]
 
 instance Scheme SubScheme where
   data Token SubScheme

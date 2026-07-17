@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -11,45 +12,64 @@ value once they have received the appropriate input.
 -}
 module Mangrove.Resolve
   ( -- * Resolution
-    ResolveError(..)
-  , sumResults
-  , Resolve(..)
+    Resolve(..)
+  , ResolveM(..)
+  , renderExpectedError
   , resolveLifted
   ) where
 
+import           Control.Applicative
 import           Control.Monad.Except
-import           Data.Bifunctor
 import qualified Data.List            as List
+import           Data.Text            (Text)
 import           Mangrove.Text
 
--- | Resolving an object might fail if not enough input has been
--- provided or the result depends on an unresolvable value (e.g.
--- empty).
-data ResolveError
+-- | A monad for resolving parsers and expression trees.
+--
+-- We track two kinds of failure: (1) we expected something specific
+-- and didn't find it, and (2) the parser resolved to an empty value.
+data ResolveM a
   = EmptyError
   | ExpectedError [Builder]
-  deriving (Eq, Show)
+  | Value a
+  deriving (Functor)
 
-instance Semigroup ResolveError where
-  ExpectedError ls <> ExpectedError rs = ExpectedError $ ls <> rs
-  l <> EmptyError                      = l
-  EmptyError <> r                      = r
+instance Applicative ResolveM where
+  pure = Value
 
-instance Render ResolveError where
-  render EmptyError = "empty"
-  render (ExpectedError ts) = "expected: " <> mconcat (List.intersperse " or " ts)
+  Value f <*> r          = fmap f r
+  ExpectedError es <*> _ = ExpectedError es
+  EmptyError <*> _       = EmptyError
 
--- | Combine resolution results, preserving information about failures
--- when necessary.
-sumResults :: Either ResolveError r -> Either ResolveError r -> Either ResolveError r
-sumResults (Left e1) (Left e2) = Left $ e1 <> e2
-sumResults l r                 = l <> r
+instance Alternative ResolveM where
+  empty = EmptyError
+
+  ExpectedError es1 <|> ExpectedError es2 = ExpectedError $ es1 <> es2
+  l@(Value _) <|> _                       = l
+  _ <|> r                                 = r
+
+instance Monad ResolveM where
+  return = pure
+
+  Value a >>= f          = f a
+  ExpectedError es >>= _ = ExpectedError es
+  EmptyError >>= _       = EmptyError
+
+renderEmptyError :: Builder
+renderEmptyError = "empty"
+
+renderExpectedError :: [Builder] -> Builder
+renderExpectedError es =
+  "expected: " <> (mconcat . List.intersperse " or ") es
 
 -- | Things that can be resolved to a value, but might fail to
 -- resolve.
-class Resolve f where
-  resolve :: f r -> Either ResolveError r
+class Resolve m where
+  resolve :: m r -> ResolveM r
 
 -- | Lift 'resolve' into 'MonadError Builder'.
 resolveLifted :: (Resolve f, MonadError Builder m) => f r -> m r
-resolveLifted = liftEither . first render . resolve
+resolveLifted mr = case resolve mr of
+  EmptyError       -> throwError renderEmptyError
+  ExpectedError es -> throwError $ renderExpectedError es
+  Value a          -> pure a

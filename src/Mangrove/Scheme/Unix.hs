@@ -29,7 +29,6 @@ module Mangrove.Scheme.Unix
   , renderHelp
   ) where
 
-import Data.Maybe
 import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.Except
@@ -38,6 +37,7 @@ import           Data.List.NonEmpty      (NonEmpty)
 import qualified Data.List.NonEmpty      as NonEmpty
 import           Data.Map.Strict         (Map)
 import qualified Data.Map.Strict         as Map
+import           Data.Maybe
 import           Data.String
 import           Data.Text               (Text)
 import qualified Data.Text               as T
@@ -119,11 +119,11 @@ instance Valency UnixScheme where
 
 instance Resolve UnixScheme where
   resolve (Parameter (TextParser hint _)) =
-    throwError $ ExpectedError [render hint]
+    ExpectedError [render hint]
   resolve (Option info _) =
-    throwError $ ExpectedError [render (optHead info)]
+    ExpectedError [render $ optHead info]
   resolve (Command info _) =
-    throwError $ ExpectedError [render (cmdHead info)]
+    ExpectedError [render $ cmdHead info]
 
 -- | A parser for interpreting options. An option always begins with a
 -- flag, followed optionally by an "=" sign and a bound argument. The

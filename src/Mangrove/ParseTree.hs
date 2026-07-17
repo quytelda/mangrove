@@ -31,7 +31,6 @@ module Mangrove.ParseTree
   ) where
 
 import           Control.Applicative
-import           Control.Monad.Except
 import           Data.Kind
 import           Data.Maybe
 import           Data.Proxy
@@ -97,12 +96,12 @@ instance Valency s => Valency (ParseTree s) where
   -- infinite or zero depending on whether the valency of 'p' is zero.
 
 instance Resolve p => Resolve (ParseTree p) where
-  resolve EmptyNode          = throwError EmptyError
-  resolve HelpNode           = throwError EmptyError
+  resolve EmptyNode          = EmptyError
+  resolve HelpNode           = EmptyError
   resolve (ValueNode value)  = pure value
   resolve (ParseNode parser) = resolve parser
   resolve (ProdNode f l r)   = f <$> resolve l <*> resolve r
-  resolve (SumNode l r)      = sumResults (resolve l) (resolve r)
+  resolve (SumNode l r)      = resolve l <|> resolve r
   resolve (ManyNode False _) = pure []
   resolve (ManyNode True  p) = pure <$> resolve p
   -- NOTE: If a ManyNode contains a resolvable node, one might expect
@@ -155,7 +154,7 @@ nullary (ManyNode _ tree) = nullary tree
 -- NOTE: A 'ParseTree' that has been split apart can no longer be used
 -- for actual parsing - it can only be used for display purposes
 -- (hence the term "Exhibit").
-exhibitTree :: Scheme s => ParseTree s r -> Exhibit (ParseTree s r)
+exhibitTree :: (Functor s, Scheme s) => ParseTree s r -> Exhibit (ParseTree s r)
 exhibitTree (SumNode l r) = Exhibit norm (modalsL <> modalsR)
   where
     Exhibit normL modalsL = exhibitTree l
@@ -170,7 +169,7 @@ exhibitTree (ProdNode f l r) = Exhibit norm modals
     node = ProdNode f
     norm = liftA2 node normL normR
     cross g modalTrees normalTrees =
-      [ g (if usesTerseOutput m && isOptional n then mempty else n) <$> m
+      [ g (if usesTerseOutput m && isOptional n then empty else n) <$> m
       | m <- modalTrees
       , n <- normalTrees
       ]
