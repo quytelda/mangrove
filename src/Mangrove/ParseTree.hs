@@ -95,7 +95,7 @@ instance Valency s => Valency (ParseTree s) where
   -- arbitrary number of parameters, so the maximum valency is either
   -- infinite or zero depending on whether the valency of 'p' is zero.
 
-instance Resolve p => Resolve (ParseTree p) where
+instance Resolve s => Resolve (ParseTree s) where
   resolve EmptyNode          = EmptyError
   resolve HelpNode           = EmptyError
   resolve (ValueNode value)  = pure value
@@ -116,10 +116,12 @@ instance Resolve p => Resolve (ParseTree p) where
   -- unclear. This avoids infinite loops, but might not be the
   -- expected behavior in some unforseen use-case.
 
+-- | Is this a 'ProdNode'?
 isProduct :: ParseTree s r -> Bool
 isProduct (ProdNode {}) = True
 isProduct _             = False
 
+-- | Is this a 'SumNode'?
 isSum :: ParseTree s r -> Bool
 isSum (SumNode {}) = True
 isSum _            = False

@@ -21,7 +21,6 @@ module Mangrove.Resolve
 import           Control.Applicative
 import           Control.Monad.Except
 import qualified Data.List            as List
-import           Data.Text            (Text)
 import           Mangrove.Text
 
 -- | A monad for resolving parsers and expression trees.
@@ -55,9 +54,11 @@ instance Monad ResolveM where
   ExpectedError es >>= _ = ExpectedError es
   EmptyError >>= _       = EmptyError
 
+-- | An error message for 'EmptyError's.
 renderEmptyError :: Builder
 renderEmptyError = "empty"
 
+-- | Format an error message for 'ExpectedError's.
 renderExpectedError :: [Builder] -> Builder
 renderExpectedError es =
   "expected: " <> (mconcat . List.intersperse " or ") es

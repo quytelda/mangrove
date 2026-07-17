@@ -104,12 +104,14 @@ data CommandInfo = CommandInfo
 cmdHead :: CommandInfo -> Text
 cmdHead = NonEmpty.head . cmdNames
 
--- | A parser scheme for Unix-style CLI arguments.
+-- | A parsing scheme for Unix-style command line syntax.
 data UnixScheme r
-  = Parameter (TextParser r) -- ^ A standard freeform parameter
-  | Command CommandInfo (ParseTree UnixScheme r) -- ^ A subcommand with its own parse tree
-  | Option OptionInfo (ParseTree SubScheme r) -- ^ A named option that
-                                              -- might support suboptions
+  -- | A freeform positional parameter
+  = Parameter (TextParser r)
+  -- | A subcommand with its own parse tree
+  | Command CommandInfo (ParseTree UnixScheme r)
+  -- | A named option that might support suboptions
+  | Option OptionInfo (ParseTree SubScheme r)
   deriving (Functor)
 
 instance Valency UnixScheme where
@@ -147,9 +149,12 @@ isMarked s   = "-" `T.isPrefixOf` s
 
 instance Scheme UnixScheme where
   data Token UnixScheme
-    = UnixArgument Text -- ^ A freeform argument that is not an option or command
-    | UnixCommand Text -- ^ A subcommand
-    | UnixOption Flag (Maybe Text) -- ^ A named option with optional bound argument
+    -- | A freeform positional argument that is not an option or command
+    = UnixArgument Text
+    -- | A recognized subcommand
+    | UnixCommand Text
+    -- | A named option with optional bound argument
+    | UnixOption Flag (Maybe Text)
     deriving (Eq, Show)
 
   delimiter _ = ' '
