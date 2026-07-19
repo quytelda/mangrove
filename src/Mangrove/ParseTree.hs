@@ -146,6 +146,35 @@ isOptional _                          = False
 isChoice :: ParseTree s r -> Bool
 isChoice = liftA2 (&&) isSum (not . isOptional)
 
+instance (Valency s, Scheme s) => Render (ParseTree s r) where
+  -- special cases
+  render (SumNode p (ValueNode _)) = brackets $ render p
+
+  render (ParseNode parser) = usageInfo parser
+  render (ProdNode _ l r)
+    | nullary l && nullary r = ""
+    | nullary l = _render r
+    | nullary r = _render l
+    | otherwise = _render l <> render sep <> _render r
+    where
+      _render = renderDelimitedIf braces isChoice
+      sep = delimiter (Proxy @s)
+  render (SumNode l r)
+    | nullary l && nullary r = ""
+    | nullary l = _render r
+    | nullary r = _render l
+    | otherwise = _render l <> "|" <> _render r
+    where
+      _render = renderDelimitedIf braces isProduct
+  render (ManyNode required p) = wrap $ render p <> "..."
+    where
+      wrap = if required
+             then braces
+             else brackets
+
+  -- Constant nodes that don't accept input have no usage.
+  render _ = ""
+
 -- | Divide a 'ParseTree' into regular and modal subtrees.
 --
 -- We do this so that we can render usage information for each subtree
@@ -179,35 +208,6 @@ exhibitTree (ProdNode f l r) = Exhibit norm modals
              <> [liftA2 node u v | u <- modalsL, v <- modalsR]
 exhibitTree (ParseNode p) = ParseNode <$> exhibitParser p
 exhibitTree n = Exhibit (Just n) []
-
-instance (Valency s, Scheme s) => Render (ParseTree s r) where
-  -- special cases
-  render (SumNode p (ValueNode _)) = brackets $ render p
-
-  render (ParseNode parser) = usageInfo parser
-  render (ProdNode _ l r)
-    | nullary l && nullary r = ""
-    | nullary l = _render r
-    | nullary r = _render l
-    | otherwise = _render l <> render sep <> _render r
-    where
-      _render = renderDelimitedIf braces isChoice
-      sep = delimiter (Proxy @s)
-  render (SumNode l r)
-    | nullary l && nullary r = ""
-    | nullary l = _render r
-    | nullary r = _render l
-    | otherwise = _render l <> "|" <> _render r
-    where
-      _render = renderDelimitedIf braces isProduct
-  render (ManyNode required p) = wrap $ render p <> "..."
-    where
-      wrap = if required
-             then braces
-             else brackets
-
-  -- Constant nodes that don't accept input have no usage.
-  render _ = ""
 
 --------------------------------------------------------------------------------
 
