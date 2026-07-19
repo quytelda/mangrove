@@ -62,7 +62,7 @@ exhibitToList (Exhibit mnorm modals) =
 
 -- | A scheme is a system of parsers and tokens. It parses a sequence
 -- of arguments into tokens and values.
-class Resolve s => Scheme (s :: Type -> Type) where
+class (Functor s, Resolve s) => Scheme (s :: Type -> Type) where
   -- | A token represents a particular interpretation of an argument
   -- string under this parsing scheme.
   data Token s

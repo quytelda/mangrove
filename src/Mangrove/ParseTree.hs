@@ -184,7 +184,7 @@ instance (Valency s, Scheme s) => Render (ParseTree s r) where
 -- NOTE: A 'ParseTree' that has been split apart can no longer be used
 -- for actual parsing - it can only be used for display purposes
 -- (hence the term "Exhibit").
-exhibitTree :: (Functor s, Scheme s) => ParseTree s r -> Exhibit (ParseTree s r)
+exhibitTree :: Scheme s => ParseTree s r -> Exhibit (ParseTree s r)
 exhibitTree (SumNode l r) = Exhibit norm (modalsL <> modalsR)
   where
     Exhibit normL modalsL = exhibitTree l
