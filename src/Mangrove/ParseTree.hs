@@ -23,7 +23,6 @@ module Mangrove.ParseTree
   , isSum
   , isOptional
   , isChoice
-  , nullary
 
   , exhibitTree
 
@@ -96,6 +95,16 @@ instance Valency s => Valency (ParseTree s) where
   -- arbitrary number of parameters, so the maximum valency is either
   -- infinite or zero depending on whether the valency of 'p' is zero.
 
+  -- Since ParseTrees themselves don't accept inputs, we can provide a
+  -- slightly more efficient implementation of nullary.
+  nullary EmptyNode         = True
+  nullary HelpNode          = True
+  nullary (ValueNode _)     = True
+  nullary (ParseNode p)     = nullary p
+  nullary (ProdNode _ l r)  = nullary l && nullary r
+  nullary (SumNode l r)     = nullary l && nullary r
+  nullary (ManyNode _ tree) = nullary tree
+
 instance Resolve s => Resolve (ParseTree s) where
   resolve EmptyNode          = EmptyError
   resolve HelpNode           = EmptyError
@@ -137,21 +146,6 @@ isOptional _                          = False
 isChoice :: ParseTree s r -> Bool
 isChoice = liftA2 (&&) isSum (not . isOptional)
 
--- | Identify trees that do not accept any input.
---
--- A "nullary" tree contains no parsers (i.e. no 'ParseNode'
--- children), and thus cannot accept any input. This does NOT include
--- trees that accept input optionally or trees that only accept
--- impossible input.
-nullary :: ParseTree s r -> Bool
-nullary EmptyNode         = True
-nullary HelpNode          = True
-nullary (ValueNode _)     = True
-nullary (ParseNode _)     = False
-nullary (ProdNode _ l r)  = nullary l && nullary r
-nullary (SumNode l r)     = nullary l && nullary r
-nullary (ManyNode _ tree) = nullary tree
-
 -- | Divide a 'ParseTree' into regular and modal subtrees.
 --
 -- We do this so that we can render usage information for each subtree
@@ -186,7 +180,7 @@ exhibitTree (ProdNode f l r) = Exhibit norm modals
 exhibitTree (ParseNode p) = ParseNode <$> exhibitParser p
 exhibitTree n = Exhibit (Just n) []
 
-instance Scheme s => Render (ParseTree s r) where
+instance (Valency s, Scheme s) => Render (ParseTree s r) where
   -- special cases
   render (SumNode p (ValueNode _)) = brackets $ render p
 
