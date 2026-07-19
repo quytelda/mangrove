@@ -43,10 +43,10 @@ import           System.IO
 
 import           Mangrove.ArgumentParser
 import           Mangrove.ParseTree
-import           Mangrove.Scheme
 import           Mangrove.Scheme.Sub     (SubParser)
 import qualified Mangrove.Scheme.Sub     as Sub
 import           Mangrove.Scheme.Unix
+import           Mangrove.Separable
 import           Mangrove.Stream
 import           Mangrove.Text
 import           Mangrove.TextParser
@@ -82,7 +82,7 @@ parseArguments tree name description action = do
       exitSuccess
   where
     renderUsageLine s = render name <> " " <> render s <> "\n"
-    renderUsages = foldMap renderUsageLine . exhibitToList . exhibitTree
+    renderUsages = foldMap renderUsageLine . exhibitToList . separate
 
 --------------------------------------------------------------------------------
 -- Tree-building Combinators

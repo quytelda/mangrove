@@ -27,6 +27,7 @@ import           Data.Text           (Text)
 import           Mangrove.ParseTree
 import           Mangrove.Resolve
 import           Mangrove.Scheme
+import           Mangrove.Separable
 import           Mangrove.Stream
 import           Mangrove.Text
 import           Mangrove.TextParser
@@ -46,6 +47,9 @@ instance Resolve SubScheme where
     ExpectedError [render hint]
   resolve (Option key (TextParser hint _)) =
     ExpectedError [render key <> "=" <> render hint]
+
+instance Separable SubScheme where
+  separate s = Exhibit (Just s) []
 
 instance Scheme SubScheme where
   data Token SubScheme

@@ -33,6 +33,7 @@ library
       Mangrove.Scheme
       Mangrove.Scheme.Sub
       Mangrove.Scheme.Unix
+      Mangrove.Separable
       Mangrove.Stream
       Mangrove.Text
       Mangrove.TextParser

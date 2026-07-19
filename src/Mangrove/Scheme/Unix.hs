@@ -50,6 +50,7 @@ import           Mangrove.Resolve
 import           Mangrove.Scheme
 import           Mangrove.Scheme.Sub     (SubScheme)
 import qualified Mangrove.Scheme.Sub     as Sub
+import           Mangrove.Separable
 import           Mangrove.Stream
 import           Mangrove.Text
 import           Mangrove.TextParser
@@ -126,6 +127,14 @@ instance Resolve UnixScheme where
     ExpectedError [render $ optHead info]
   resolve (Command info _) =
     ExpectedError [render $ cmdHead info]
+
+instance Separable UnixScheme where
+  separate p@(Option _ HelpNode) = Exhibit Nothing [Modal True p]
+  separate (Command info subtree) =
+    Exhibit Nothing $ (Modal False <$> maybeToList mregular) <> modals
+    where
+      Exhibit mregular modals = Command info <$> separate subtree
+  separate p = Exhibit (Just p) []
 
 -- | A parser for interpreting options. An option always begins with a
 -- flag, followed optionally by an "=" sign and a bound argument. The
@@ -256,13 +265,6 @@ instance Scheme UnixScheme where
     withContext (UnixCommand next) $ do
       satiate subtree
       >>= resolveLifted
-
-  exhibitParser p@(Option _ HelpNode) = Exhibit Nothing [Modal True p]
-  exhibitParser (Command info subtree) =
-    Exhibit Nothing $ (Modal False <$> maybeToList mregular) <> modals
-    where
-      Exhibit mregular modals = Command info <$> exhibitTree subtree
-  exhibitParser p = Exhibit (Just p) []
 
   usageInfo (Parameter tp) = render $ parserHint tp
   usageInfo (Command info subtree) =
