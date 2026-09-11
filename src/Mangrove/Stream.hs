@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE DeriveFunctor             #-}
+{-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
@@ -59,6 +60,7 @@ import           Data.Proxy
 import           Data.Text              (Text)
 import qualified Data.Text.Lazy         as TL
 import qualified Data.Text.Lazy.Builder as TLB
+import           GHC.Generics
 
 import           Mangrove.Text
 
@@ -101,7 +103,7 @@ data StreamState s = StreamState
   { streamContent :: ![Text]    -- ^ A sequence of 'Text' values
   , streamContext :: ![Token s] -- ^ A stack representing current parsing context
   , streamEscaped :: !Bool      -- ^ Escaped mode
-  }
+  } deriving (Generic)
 
 deriving instance ParserInfo s => Show (StreamState s)
 deriving instance ParserInfo s => Eq (StreamState s)
@@ -110,7 +112,7 @@ deriving instance ParserInfo s => Eq (StreamState s)
 data RequestType
   = VersionRequest -- ^ A request for version information
   | HelpRequest -- ^ A request for help and usage information
-  deriving (Eq, Show)
+  deriving (Eq, Generic, Show)
 
 -- | A handler for when information is requested.
 --

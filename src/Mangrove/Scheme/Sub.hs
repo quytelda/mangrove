@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor     #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies      #-}
@@ -23,6 +24,7 @@ module Mangrove.Scheme.Sub
 
 import           Control.Applicative
 import           Data.Text           (Text)
+import           GHC.Generics
 
 import           Mangrove.ParseTree
 import           Mangrove.Resolve
@@ -63,7 +65,7 @@ instance ParserInfo SubScheme where
   data Token SubScheme
     = SubAssoc Text Text -- ^ A "KEY=VALUE" argument
     | SubArgument Text -- ^ A standard freeform argument
-    deriving (Eq, Show)
+    deriving (Eq, Generic, Show)
 
   delimiter _ = ','
 

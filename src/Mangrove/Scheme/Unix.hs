@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE DeriveFunctor     #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -46,6 +47,7 @@ import qualified Data.Text.Lazy         as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import           Data.Version
 import           Data.Void
+import           GHC.Generics
 
 import           Mangrove.Parser
 import           Mangrove.ParseTree
@@ -73,7 +75,7 @@ import           Mangrove.Valency
 data Flag
   = LongFlag !Text
   | ShortFlag !Char
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Generic, Ord, Show)
 
 instance IsString Flag where
   fromString ('-':'-':name)
@@ -187,7 +189,7 @@ instance ParserInfo UnixScheme where
     | UnixCommand Text
     -- | A named option with optional bound argument
     | UnixOption Flag (Maybe Text)
-    deriving (Eq, Show)
+    deriving (Eq, Generic, Show)
 
   delimiter _ = ' '
 
