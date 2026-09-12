@@ -21,7 +21,7 @@ import           Mangrove.Test.Stream
 
 prop_functorIdLaw
   :: SP_Unix Int
-  -> StreamState UnixScheme
+  -> StreamState (Token UnixScheme)
   -> Bool
 prop_functorIdLaw (SP_Unix m) state =
   runSPU (fmap id m) state == runSPU m state
@@ -30,7 +30,7 @@ prop_functorComLaw
   :: Fun Int Int
   -> Fun Int Int
   -> SP_Unix Int
-  -> StreamState UnixScheme
+  -> StreamState (Token UnixScheme)
   -> Bool
 prop_functorComLaw (Fn f) (Fn g) (SP_Unix m) state =
   runSPU (fmap (f . g) m) state == runSPU ((fmap f . fmap g) m) state
@@ -41,7 +41,7 @@ prop_functorComLaw (Fn f) (Fn g) (SP_Unix m) state =
 prop_monadLeftId
   :: Int
   -> Fun Int (SP_Unix Int)
-  -> StreamState UnixScheme
+  -> StreamState (Token UnixScheme)
   -> Bool
 prop_monadLeftId a fn state =
   runSPU (f a) state == runSPU (return a >>= f) state
@@ -50,7 +50,7 @@ prop_monadLeftId a fn state =
 
 prop_monadRightId
   :: SP_Unix Int
-  -> StreamState UnixScheme
+  -> StreamState (Token UnixScheme)
   -> Bool
 prop_monadRightId (SP_Unix m) state =
   runSPU m state == runSPU (m >>= return) state
@@ -59,7 +59,7 @@ prop_monadAssoc
   :: SP_Unix Int
   -> Fun Int (SP_Unix Int)
   -> Fun Int (SP_Unix Int)
-  -> StreamState UnixScheme
+  -> StreamState (Token UnixScheme)
   -> Bool
 prop_monadAssoc (SP_Unix m) fn1 fn2 state =
   runSPU ((m >>= f) >>= g) state == runSPU (m >>= (\x -> f x >>= g)) state
@@ -70,29 +70,29 @@ prop_monadAssoc (SP_Unix m) fn1 fn2 state =
 --------------------------------------------------------------------------------
 
 prop_peek_preservesState
-  :: StreamState UnixScheme
+  :: StreamState (Token UnixScheme)
   -> Bool
 prop_peek_preservesState state =
   case runSPU peek state of
     (_, state') -> state == state'
 
 prop_pop_preservesContext
-  :: StreamState UnixScheme
+  :: StreamState (Token UnixScheme)
   -> Bool
 prop_pop_preservesContext state =
   case runSPU pop state of
     (_, state') -> streamContext state == streamContext state'
 
 prop_pop_preservesEscaped
-  :: StreamState UnixScheme
+  :: StreamState (Token UnixScheme)
   -> Bool
 prop_pop_preservesEscaped state =
   case runSPU pop state of
     (_, state') -> streamEscaped state == streamEscaped state'
 
 prop_yieldsValueOrEmpty
-  :: StreamParser UnixScheme Text
-  -> StreamState UnixScheme
+  :: SP_Unix_T Text
+  -> StreamState (Token UnixScheme)
   -> Bool
 prop_yieldsValueOrEmpty action state =
   case runSPU action state of
@@ -101,8 +101,8 @@ prop_yieldsValueOrEmpty action state =
     _                -> False
 
 prop_consumesValue
-  :: StreamParser UnixScheme a
-  -> StreamState UnixScheme
+  :: SP_Unix_T a
+  -> StreamState (Token UnixScheme)
   -> Bool
 prop_consumesValue action state =
   case runSPU action state of

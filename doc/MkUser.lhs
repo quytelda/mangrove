@@ -315,7 +315,7 @@ program's version.
 >     opt_help =
 >       requestOption ["--help"]
 >       "Display help and usage information"
->       HelpRequest
+>       $ HelpRequest []
 >     opt_version =
 >       requestOption ["--version"]
 >       "Display program version"

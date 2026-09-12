@@ -15,11 +15,7 @@ module Mangrove
   , ParseTree
   , Scheme
   , ProgramInfo(..)
-  , SupportsResponse
   , StreamState
-  , RequestType(..)
-  , RequestHandler
-  , ReqContinuation(..)
   ) where
 
 import           Mangrove.Parser

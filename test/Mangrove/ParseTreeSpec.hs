@@ -44,8 +44,8 @@ prop_applicativeIdLaw
 prop_applicativeIdLaw tree (ArgList args) =
   result1 == result2
   where
-    result1 = runHelpfulParser_ (pure id <*> tree) args
-    result2 = runHelpfulParser_ tree args
+    result1 = runArgumentParser (pure id <*> tree) args
+    result2 = runArgumentParser tree args
 
 prop_applicativeHomLaw
   :: Fun Int Int
@@ -57,8 +57,8 @@ prop_applicativeHomLaw (Fn f) value (ArgList args) =
   where
     tree1 = pure f <*> pure value :: ParseTree UnixScheme Int
     tree2 = pure (f value) :: ParseTree UnixScheme Int
-    result1 = runHelpfulParser_ tree1 args
-    result2 = runHelpfulParser_ tree2 args
+    result1 = runArgumentParser tree1 args
+    result2 = runArgumentParser tree2 args
 
 prop_applicativeIntLaw
   :: Fun (Int, Int) Int
@@ -70,8 +70,8 @@ prop_applicativeIntLaw (Fn2 f) tree n (ArgList args) =
   result1 == result2
   where
     u = fmap f tree
-    result1 = runHelpfulParser_ (u <*> pure n) args
-    result2 = runHelpfulParser_ (pure ($ n) <*> u) args
+    result1 = runArgumentParser (u <*> pure n) args
+    result2 = runArgumentParser (pure ($ n) <*> u) args
 
 prop_applicativeComLaw
   :: Fun (Int, Int) Int
@@ -88,8 +88,8 @@ prop_applicativeComLaw (Fn2 f) (Fn2 g) t1 t2 w (ArgList args) =
     v = fmap g t2
     tree1 = pure (.) <*> u <*> v <*> w
     tree2 = u <*> (v <*> w)
-    result1 = runHelpfulParser_ tree1 args
-    result2 = runHelpfulParser_ tree2 args
+    result1 = runArgumentParser tree1 args
+    result2 = runArgumentParser tree2 args
 
 --------------------------------------------------------------------------------
 
@@ -117,9 +117,9 @@ prop_liftA2CombinesResults (Fn2 f) l r (ArgList args) =
     (Success _ x, Success _ y, Success _ z) -> z == f x y
     _ -> resultA == resultL || resultA == resultR
   where
-    resultL = runHelpfulParser_ l args
-    resultR = runHelpfulParser_ r args
-    resultA = runHelpfulParser_ (liftA2 f l r) args
+    resultL = runArgumentParser l args
+    resultR = runArgumentParser r args
+    resultA = runArgumentParser (liftA2 f l r) args
 
 prop_altMaxesValency
   :: UnixParser Int
@@ -136,9 +136,9 @@ prop_altPicksOne
 prop_altPicksOne l r (ArgList args) =
   resultSum == resultL || resultSum == resultR
   where
-    resultL = runHelpfulParser_ l args
-    resultR = runHelpfulParser_ r args
-    resultSum = runHelpfulParser_ (l <|> r) args
+    resultL = runArgumentParser l args
+    resultR = runArgumentParser r args
+    resultSum = runArgumentParser (l <|> r) args
 
 prop_altEmptyIdentity
   :: (ParseTree UnixScheme Int -> ParseTree UnixScheme Int)
@@ -146,7 +146,7 @@ prop_altEmptyIdentity
   -> ArgList
   -> Bool
 prop_altEmptyIdentity append tree (ArgList args) =
-  runHelpfulParser_ tree args == runHelpfulParser_ (append tree) args
+  runArgumentParser tree args == runArgumentParser (append tree) args
 
 --------------------------------------------------------------------------------
 
@@ -174,16 +174,16 @@ spec = do
 
   describe "pure" $ do
     it "resolves to the given value" $ do
-      runHelpfulParser_ (ValueNode 'a' :: ParseTree UnixScheme Char) []
+      runArgumentParser (ValueNode 'a' :: ParseTree UnixScheme Char) []
         `shouldBe` Success [] 'a'
 
   describe "liftA2" $ do
     it "combines two values" $ do
-      runHelpfulParser_ (liftA2 (+) (pure 1) (pure 2) :: ParseTree UnixScheme Int) []
+      runArgumentParser (liftA2 (+) (pure 1) (pure 2) :: ParseTree UnixScheme Int) []
         `shouldBe` Success [] 3
 
       -- should be equivalent
-      runHelpfulParser_ ((+) <$> pure 1 <*> pure 2 :: ParseTree UnixScheme Int) []
+      runArgumentParser ((+) <$> pure 1 <*> pure 2 :: ParseTree UnixScheme Int) []
         `shouldBe` Success [] 3
 
     prop "combines results"
@@ -193,7 +193,7 @@ spec = do
 
   describe "empty" $ do
     it "doesn't resolve to any value" $ do
-      runHelpfulParser_ (empty :: ParseTree UnixScheme Char) []
+      runArgumentParser (empty :: ParseTree UnixScheme Char) []
         `shouldBe` Failure "empty"
 
     it "has valency zero" $ do
@@ -212,41 +212,41 @@ spec = do
 
     context "when the left child is resolvable" $ do
       it "resolves as the left child" $ do
-        runHelpfulParser_ (pure "asdf" <|> opt_e_param) []
+        runArgumentParser (pure "asdf" <|> opt_e_param) []
           `shouldBe` Success [] "asdf"
 
         -- When the right child is also resolvable, it should be
         -- ignored.
-        runHelpfulParser_ (pure "asdf" <|> pure "qwer" :: ParseTree UnixScheme Text) []
+        runArgumentParser (pure "asdf" <|> pure "qwer" :: ParseTree UnixScheme Text) []
           `shouldBe` Success [] "asdf"
 
     context "when the left child is unresolvable" $ do
       it "resolves as the right child" $ do
-        runHelpfulParser_ (opt_e_param <|> pure "asdf") []
+        runArgumentParser (opt_e_param <|> pure "asdf") []
           `shouldBe` Success [] "asdf"
 
     context "when one child is triggered" $ do
       it "prunes the other child" $ do
-        runHelpfulParser_ (opt_e_unit <|> opt_f_unit) ["-e", "-f"]
+        runArgumentParser (opt_e_unit <|> opt_f_unit) ["-e", "-f"]
           `shouldBe` Success ["-f"] ()
-        runHelpfulParser_ (opt_e_unit <|> opt_f_unit) ["-f", "-e"]
+        runArgumentParser (opt_e_unit <|> opt_f_unit) ["-f", "-e"]
           `shouldBe` Success ["-e"] ()
 
   describe "many" $ do
     it "parses multiple instances" $ do
-      runHelpfulParser_ (many opt_e_param) ["-e", "asdf", "-e", "qwer", "-e", "zxcv"]
+      runArgumentParser (many opt_e_param) ["-e", "asdf", "-e", "qwer", "-e", "zxcv"]
         `shouldBe` Success [] ["asdf", "qwer", "zxcv"]
     it "parses zero instances" $ do
-      runHelpfulParser_ (many opt_e_param) ["blah"]
+      runArgumentParser (many opt_e_param) ["blah"]
         `shouldBe` Success ["blah"] []
 
     it "handles compound trees" $ do
       let tree = (opt_f_unit *> opt_e_param) <|> opt_example_param
-      runHelpfulParser_ (many tree) ["-f", "-e", "asdf", "--example", "qwer"]
+      runArgumentParser (many tree) ["-f", "-e", "asdf", "--example", "qwer"]
         `shouldBe` Success [] ["asdf", "qwer"]
 
     it "doesn't swallow arguments" $ do
-      runHelpfulParser_ (many $ opt_f_unit *> opt_e_param) ["-f", "-e", "asdf", "-f"]
+      runArgumentParser (many $ opt_f_unit *> opt_e_param) ["-f", "-e", "asdf", "-f"]
         `shouldBe` Failure "expected: -e"
         -- Some attempts at implementing many/some resulted in
         -- arguments being silently swallowed if they were consumed by
@@ -258,25 +258,25 @@ spec = do
 
   describe "some" $ do
     it "parses multiple instances" $ do
-      runHelpfulParser_ (some opt_e_param) ["-e", "asdf", "-e", "qwer", "-e", "zxcv"]
+      runArgumentParser (some opt_e_param) ["-e", "asdf", "-e", "qwer", "-e", "zxcv"]
         `shouldBe` Success [] ["asdf", "qwer", "zxcv"]
     it "requires at least one instance" $ do
-      runHelpfulParser_ (some opt_e_param) ["blah"]
+      runArgumentParser (some opt_e_param) ["blah"]
         `shouldBe` Failure "unexpected blah"
 
     it "handles compound trees" $ do
       let tree = (opt_f_unit *> opt_e_param) <|> opt_example_param
-      runHelpfulParser_ (some tree) ["-f", "-e", "asdf", "--example", "qwer"]
+      runArgumentParser (some tree) ["-f", "-e", "asdf", "--example", "qwer"]
         `shouldBe` Success [] ["asdf", "qwer"]
 
     it "doesn't swallow arguments" $ do
-      runHelpfulParser_ (some $ opt_f_unit *> opt_e_param) ["-f", "-e", "asdf", "-f"]
+      runArgumentParser (some $ opt_f_unit *> opt_e_param) ["-f", "-e", "asdf", "-f"]
         `shouldBe` Failure "expected: -e"
 
   describe "optional" $ do
     it "parses exactly one instance" $ do
-      runHelpfulParser_ (optional opt_e_param) ["-e", "asdf", "-e", "qwer", "-e", "zxcv"]
+      runArgumentParser (optional opt_e_param) ["-e", "asdf", "-e", "qwer", "-e", "zxcv"]
         `shouldBe` Success [ "-e", "qwer", "-e", "zxcv"] (Just "asdf")
     it "parses zero instances" $ do
-      runHelpfulParser_ (optional opt_e_param) ["blah"]
+      runArgumentParser (optional opt_e_param) ["blah"]
         `shouldBe` Success ["blah"] Nothing

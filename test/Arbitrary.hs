@@ -127,10 +127,10 @@ instance Arbitrary (Token UnixScheme) where
 
 instance CoArbitrary (Token UnixScheme)
 
-instance Arbitrary RequestType where
-  arbitrary = elements [HelpRequest, VersionRequest]
+instance Arbitrary UnixRequest where
+  arbitrary = elements [HelpRequest [], VersionRequest]
 
-instance CoArbitrary RequestType
+instance CoArbitrary UnixRequest
 
 genUnixScheme :: Gen (UnixScheme Int)
 genUnixScheme =
@@ -158,7 +158,7 @@ newtype ArgList = ArgList { getArgs :: [Text] }
 instance Arbitrary ArgList where
   arbitrary = ArgList <$> genUnixArgs
 
-instance Arbitrary (StreamState UnixScheme) where
+instance Arbitrary (StreamState (Token UnixScheme)) where
   arbitrary = StreamState <$> genUnixArgs <*> arbitrary <*> arbitrary
 
-instance CoArbitrary (StreamState UnixScheme)
+instance CoArbitrary (StreamState (Token UnixScheme))

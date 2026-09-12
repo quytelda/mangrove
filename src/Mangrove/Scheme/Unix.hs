@@ -25,6 +25,7 @@ module Mangrove.Scheme.Unix
   , UnixScheme(..)
   , Token(..)
   , UnixParser
+  , UnixRequest(..)
 
     -- * Help
   , addHelpOptions
@@ -58,6 +59,7 @@ import qualified Mangrove.Scheme.Sub    as Sub
 import           Mangrove.Stream
 import           Mangrove.Text
 import           Mangrove.TextParser
+import           Mangrove.Token
 import           Mangrove.Valency
 
 --------------------------------------------------------------------------------
@@ -118,7 +120,7 @@ data UnixScheme r
   -- | A named option that might support suboptions
   | Option !OptionInfo (ParseTree SubScheme r)
   -- | A special option that raises a request for information
-  | RequestOption !OptionInfo !RequestType
+  | RequestOption !OptionInfo !UnixRequest
   deriving (Functor)
 
 instance Show (UnixScheme r) where
@@ -181,7 +183,7 @@ isMarked :: Text -> Bool
 isMarked "-" = False
 isMarked s   = "-" `T.isPrefixOf` s
 
-instance ParserInfo UnixScheme where
+instance HasTokens UnixScheme where
   data Token UnixScheme
     -- | A freeform positional argument that is not an option or command
     = UnixArgument Text
@@ -193,9 +195,42 @@ instance ParserInfo UnixScheme where
 
   delimiter _ = ' '
 
-  type RequestSupport UnixScheme = 'True
+-- | Requests supported by UNIX-style parsers.
+data UnixRequest
+  = VersionRequest -- ^ A request for version information
+  | HelpRequest [Text] -- ^ A request for help and usage information
+  deriving (Eq, Generic, Show)
+
+respondHelpRequest
+  :: [Text]
+  -> ParseTree UnixScheme r
+  -> ProgramInfo UnixScheme
+  -> Text
+respondHelpRequest cmds tree info = renderText
+  $ "Usage:\n"
+  <> formatUsages (programName info) usages <> "\n\n"
+  <> render (programDesc info) <> "\n"
+  <> renderHelp tree cmds
+  where
+    usages = decomposeTree tree cmds
+
+respondVersionRequest
+  :: ProgramInfo UnixScheme
+  -> Text
+respondVersionRequest info = renderText
+  $ render (programName info)
+  <> " version "
+  <> renderVersion (programVersion info)
+  <> "\n"
+  where
+    renderVersion = TLB.fromString . showVersion
 
 instance Scheme UnixScheme where
+  type Request UnixScheme = UnixRequest
+
+  respond (HelpRequest cmds) tree info = respondHelpRequest cmds tree info
+  respond VersionRequest _ info        = respondVersionRequest info
+
   parseSpecials = do
     peekMaybe >>= \case
       Just "--" -> pop_ *> setEscaped True
@@ -243,10 +278,9 @@ instance Scheme UnixScheme where
           , streamEscaped = not $ Sub.hasSubOptions subtree
           }
         parseSubargs args =
-          runArgumentParser' subtree (initState args)
-          (curry pure)
-          (throwError . render)
-          NoRequests
+          case runArgumentParser' subtree (initState args) of
+            Success leftover result -> pure (leftover, result)
+            Failure err             -> throwError $ render err
 
     withContext (UnixOption flag mbound) $ do
       -- If a bound argument (e.g. --floop=blah) is provided, we
@@ -412,24 +446,6 @@ formatUsages progName (Usages reqs misc cmds) =
   where
     usageModes = map vacuous reqs <> maybeToList misc <> cmds
 
-instance SupportsResponse UnixScheme where
-  makeVersionInfo info = renderText
-    $ render (programName info)
-    <> " version "
-    <> renderVersion (programVersion info)
-    <> "\n"
-    where
-      renderVersion = TLB.fromString . showVersion
-
-  makeHelpInfo tree context info = renderText
-    $ "Usage:\n"
-    <> formatUsages (programName info) usages <> "\n\n"
-    <> render (programDesc info) <> "\n"
-    <> renderHelp tree context
-    where
-      commandContext = [cmd | UnixCommand cmd <- context]
-      usages = decomposeTree tree commandContext
-
 -- | Convenient type alias for Unix-flavored parse trees.
 type UnixParser = ParseTree UnixScheme
 
@@ -443,20 +459,22 @@ addHelpOptions
   -> Text
   -> ParseTree UnixScheme r
   -> ParseTree UnixScheme r
-addHelpOptions flags desc tree = ParseNode helpOption <|> go tree
+addHelpOptions flags desc tree = ParseNode (helpOption []) <|> go [] tree
   where
-    helpOption :: UnixScheme a
-    helpOption = RequestOption (OptionInfo flags desc) HelpRequest
+    helpOption :: [Text] -> UnixScheme a
+    helpOption = RequestOption (OptionInfo flags desc) . HelpRequest . reverse
 
-    go :: ParseTree UnixScheme a -> ParseTree UnixScheme a
-    go (ParseNode (Command info subtree)) =
+    go :: [Text] -> ParseTree UnixScheme a -> ParseTree UnixScheme a
+    go cmds (ParseNode (Command info subtree)) =
       ParseNode
       $ Command info
-      $ ParseNode helpOption <|> go subtree
-    go (ProdNode f l r) = ProdNode f (go l) (go r)
-    go (SumNode l r) = SumNode (go l) (go r)
-    go (ManyNode require p) = ManyNode require (go p)
-    go node = node
+      $ ParseNode (helpOption cmds') <|> go cmds' subtree
+      where
+        cmds' = cmdHead info : cmds
+    go cmds (ProdNode f l r) = ProdNode f (go cmds l) (go cmds r)
+    go cmds (SumNode l r) = SumNode (go cmds l) (go cmds r)
+    go cmds (ManyNode require p) = ManyNode require (go cmds p)
+    go _ node = node
 
 data OptionHelp = OptionHelp
   { colShorts :: !TL.Text -- Column 1
@@ -562,11 +580,9 @@ isParentCommand cmds =
 -- that exist underneath the current command context.
 renderHelp
   :: ParseTree UnixScheme r
-  -> [Token UnixScheme] -- ^ Context Stack
+  -> [Text] -- ^ Command Context
   -> Builder
-renderHelp tree contexts =
+renderHelp tree cmds =
   renderTables
-  $ selectSubtable commandContext
+  $ selectSubtable cmds
   $ collectOptions tree
-  where
-    commandContext = reverse [s | UnixCommand s <- contexts]
