@@ -204,7 +204,7 @@ data UnixRequest
 respondHelpRequest
   :: [Text]
   -> ParseTree UnixScheme r
-  -> ProgramInfo UnixScheme
+  -> ProgramInfo
   -> Text
 respondHelpRequest cmds tree info = renderText
   $ "Usage:\n"
@@ -215,7 +215,7 @@ respondHelpRequest cmds tree info = renderText
     usages = decomposeTree tree cmds
 
 respondVersionRequest
-  :: ProgramInfo UnixScheme
+  :: ProgramInfo
   -> Text
 respondVersionRequest info = renderText
   $ render (programName info)

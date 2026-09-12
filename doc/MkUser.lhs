@@ -328,13 +328,11 @@ In order to display help or version information, Mangrove needs a few
 details about the program. This metadata is passed in using a
 `ProgramInfo` record:
 
-> -- Here the type variable @s@ is a phantom type that we can leave
-> -- undetermined.
-> programInfo :: ProgramInfo s
+> programInfo :: ProgramInfo
 > programInfo = ProgramInfo
 >   { programName = "mkuser" -- The name of the program
->   , programVersion = makeVersion [0,1,2,3] -- The program version is "0.1.2.3"
 >   , programDesc = "Create user accounts" -- A short description of the program
+>   , programVersion = makeVersion [0,1,2,3] -- The program version is "0.1.2.3"
 >   }
 
 The `parseArguments` function will run our parser with the arguments

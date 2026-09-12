@@ -29,6 +29,13 @@ import           Mangrove.Resolve
 import           Mangrove.Stream
 import           Mangrove.Token
 
+-- | Program metadata for displaying help output.
+data ProgramInfo = ProgramInfo
+  { programName    :: !Text -- ^ The program name
+  , programDesc    :: !Text -- ^ A description of the program
+  , programVersion :: !Version -- ^ The program version
+  } deriving (Show)
+
 -- | A scheme is a system of parsers and tokens. It parses a sequence
 -- of arguments into tokens and values.
 class (Functor s, Resolve s, HasTokens s) => Scheme (s :: Type -> Type) where
@@ -39,7 +46,7 @@ class (Functor s, Resolve s, HasTokens s) => Scheme (s :: Type -> Type) where
   -- | Generate a response to a request. If requests are unsupported
   -- for this scheme, the implementation of the function should be
   -- 'Data.Void.absurd'.
-  respond :: Request s -> ParseTree s r -> ProgramInfo s -> Text
+  respond :: Request s -> ParseTree s r -> ProgramInfo -> Text
 
   -- | Parse special control arguments that don't represent tokens in
   -- the scheme, but control aspects of how parsing proceeds (e.g.
@@ -52,10 +59,3 @@ class (Functor s, Resolve s, HasTokens s) => Scheme (s :: Type -> Type) where
   -- it does apply, it consumes the relevant input and returns a
   -- result.
   activate :: s r -> StreamParser (Request s) (Token s) r
-
--- | Program metadata for displaying help output.
-data ProgramInfo (s :: Type -> Type) = ProgramInfo
-  { programName    :: !Text -- ^ The program name
-  , programVersion :: !Version -- ^ The program version
-  , programDesc    :: !Text -- ^ A description of the program
-  } deriving (Show)

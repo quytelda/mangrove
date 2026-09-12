@@ -137,7 +137,7 @@ runArgumentParser tree =
 -- an error.
 parseArguments
   :: Scheme s
-  => ProgramInfo s -- ^ Program metadata
+  => ProgramInfo -- ^ Program metadata
   -> ParseTree s r -- ^ Argument parser
   -> (r -> IO a) -- ^ Program Entrypoint
   -> IO a
