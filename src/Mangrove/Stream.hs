@@ -1,4 +1,3 @@
-{-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE DeriveFunctor             #-}
 {-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE ExistentialQuantification #-}
@@ -7,9 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE PolymorphicComponents     #-}
-{-# LANGUAGE StandaloneDeriving        #-}
 {-# LANGUAGE TypeFamilies              #-}
-{-# LANGUAGE TypeOperators             #-}
 
 {-|
 Module      : Mangrove.Stream
@@ -26,8 +23,6 @@ module Mangrove.Stream
   , StreamHandler(..)
   , StreamState(..)
   , failure
-
-    -- ** Requests
   , request
 
     -- ** Escaping
@@ -41,13 +36,13 @@ module Mangrove.Stream
   , formatError
 
     -- ** Streaming
-  , getContent
   , popMaybe
   , peekMaybe
   , pop
   , peek
   , push
   , pop_
+  , getContent
 ) where
 
 import           Control.Applicative
@@ -119,6 +114,8 @@ instance Monad (StreamParser req tok) where
   ma >>= f = StreamParser $ \handler ->
     runStreamParser ma handler { onSuccess = \s a -> runStreamParser (f a) handler s }
 
+-- | Exit parsing with an error message because something has gone
+-- wrong.
 failure :: Builder -> StreamParser req tok a
 failure err = StreamParser $ \handler state ->
   onFailure handler state err
@@ -181,6 +178,8 @@ formatError contexts err =
 
 --------------------------------------------------------------------------------
 
+-- | Retrieve the full list of unconsumed input. This doesn't consume
+-- anything or alter the state.
 getContent :: StreamParser req tok [Text]
 getContent = StreamParser $ \handler state ->
   onSuccess handler state $ streamContent state

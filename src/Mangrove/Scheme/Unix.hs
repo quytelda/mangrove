@@ -24,8 +24,8 @@ module Mangrove.Scheme.Unix
     -- * Unix Scheme
   , UnixScheme(..)
   , Token(..)
-  , UnixParser
   , UnixRequest(..)
+  , UnixParser
 
     -- * Help
   , addHelpOptions
@@ -201,6 +201,7 @@ data UnixRequest
   | HelpRequest [Text] -- ^ A request for help and usage information
   deriving (Eq, Generic, Show)
 
+-- | Generate a response to a help request.
 respondHelpRequest
   :: [Text]
   -> ParseTree UnixScheme r
@@ -214,6 +215,7 @@ respondHelpRequest cmds tree info = renderText
   where
     usages = decomposeTree tree cmds
 
+-- | Generate a response to a version request.
 respondVersionRequest
   :: ProgramInfo
   -> Text
@@ -386,7 +388,7 @@ decomposeTree (ParseNode (RequestOption info requestType)) commands =
   -- If we're currently searching for a specific command, then
   -- this request option is irrelevant.
   let node = ParseNode (RequestOption info requestType)
-  in Usages (if null commands then [node] else []) Nothing []
+  in Usages [node | null commands] Nothing []
 
 decomposeTree (ParseNode (Command info subtree)) commands
   | commandMismatch =
@@ -403,7 +405,7 @@ decomposeTree (ParseNode (Command info subtree)) commands
   where
     commandMismatch =
       case commands of
-        (command : _) -> not $ command `elem` cmdNames info
+        (command : _) -> command `notElem` cmdNames info
         []            -> False
 
 decomposeTree (SumNode l r) commands =

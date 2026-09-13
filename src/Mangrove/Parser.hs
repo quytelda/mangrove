@@ -6,9 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE QuantifiedConstraints #-}
-{-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
 
 {-|
 Module      : Mangrove.Parser
@@ -133,13 +131,13 @@ runArgumentParser tree =
 -- invoke the program's entrypoint with the results of the parsing. If
 -- parsing fails, we instead display an error to stderr and exit.
 -- Alternatively, if information was requested, we abandon parsing and
--- print the relevant response to stdout, then exit without indicating
--- an error.
+-- print the response to stdout, then exit without indicating an
+-- error.
 parseArguments
   :: Scheme s
   => ProgramInfo -- ^ Program metadata
   -> ParseTree s r -- ^ Argument parser
-  -> (r -> IO a) -- ^ Program Entrypoint
+  -> (r -> IO a) -- ^ Program entrypoint
   -> IO a
 parseArguments info tree action = do
   args <- map T.pack <$> getArgs

@@ -35,6 +35,7 @@ import           Mangrove.Text
 import           Mangrove.TextParser
 import           Mangrove.Token
 import           Mangrove.Valency
+
 -- | Parsers for subarguments of an option (e.g. @--option key=value@).
 data SubScheme r
   = Parameter (TextParser r) -- ^ Parses freeform arguments

@@ -1,18 +1,15 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs             #-}
 {-# LANGUAGE TypeFamilies      #-}
-{-# LANGUAGE TypeOperators     #-}
 
 {-|
 Module      : Mangrove.Scheme
 Copyright   : (c) Quytelda Kahja, 2026
 License     : BSD-3-Clause
 
-A "scheme" is a system of parsers and tokens. It determines the method
-by which argument strings are separated. It parses a sequence of
-arguments into tokens and values.
+A "scheme" is a set of parsers with an associated token type. The
+scheme also defines the way the parser handles requests.
 -}
 
 module Mangrove.Scheme
@@ -38,7 +35,7 @@ data ProgramInfo = ProgramInfo
 
 -- | A scheme is a system of parsers and tokens. It parses a sequence
 -- of arguments into tokens and values.
-class (Functor s, Resolve s, HasTokens s) => Scheme (s :: Type -> Type) where
+class (Functor s, HasTokens s, Resolve s) => Scheme (s :: Type -> Type) where
   -- | What type of requests does this scheme support? This should be
   -- 'Data.Void.Void' if requests are unsupported.
   type Request s
