@@ -81,6 +81,10 @@ satiate tree = do
 --------------------------------------------------------------------------------
 -- Running Parsers
 
+-- | Create a default initial t'StreamState' from a list of arguments.
+argsToState :: [Text] -> StreamState s
+argsToState args = StreamState args [] False
+
 -- | The result of an argument parsing operation.
 data Result req a
   = Success ![Text] !a
@@ -88,34 +92,37 @@ data Result req a
   | Request !req
   deriving (Eq, Functor, Show)
 
--- | Create a default initial t'StreamState' from a list of arguments.
-argsToState :: [Text] -> StreamState s
-argsToState args = StreamState args [] False
-
--- | A more general form of 'runArgumentParser' that accepts a custom
--- stream starting state.
-runArgumentParser'
-  :: Scheme s =>
-  ParseTree s r
-  -> StreamState (Token s)
-  -> Result (Request s) r
-runArgumentParser' tree state =
-  runStreamParser (satiate tree) handler state
+-- | Resolve the output of a parsing operation and sink it into a
+-- 'Result'.
+sinkResult
+  :: Scheme s
+  => StreamHandler (Request s) (Token s) (ParseTree s r) (Result (Request s) r)
+sinkResult = StreamHandler
+  { onSuccess = _onSuccess
+  , onEmpty   = _onEmpty
+  , onFailure = _onFailure
+  , onRequest = _onRequest
+  }
   where
     _onFailure state' = Failure . formatError (streamContext state')
+    _onEmpty = flip _onFailure "empty"
     _onSuccess state' tree' =
       case (streamContent state', resolve tree') of
         (leftovers, Value result) -> Success leftovers result
         ([], EmptyError)          -> _onFailure state' "empty"
         ([], ExpectedError es)    -> _onFailure state' $ renderExpectedError es
         (token:_, _)              -> _onFailure state' $ "unexpected " <> render token
-    _onRequest _ req = Request req
-    handler = StreamHandler
-      { onSuccess = _onSuccess
-      , onFailure = _onFailure
-      , onEmpty = flip _onFailure "empty"
-      , onRequest = _onRequest
-      }
+    _onRequest _ = Request
+
+-- | A more general form of 'runArgumentParser' that accepts a custom
+-- stream starting state.
+runArgumentParser'
+  :: Scheme s
+  => ParseTree s r
+  -> StreamState (Token s)
+  -> Result (Request s) r
+runArgumentParser' tree =
+  runStreamParser (satiate tree) sinkResult
 
 -- | Satiate a 'ParseTree' with all the input it can consume, then
 -- attempt to evaluate it. Empty results are treated as failures.
