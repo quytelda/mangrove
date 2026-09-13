@@ -82,7 +82,7 @@ data StreamHandler req tok a r = StreamHandler
   , onEmpty   :: StreamState tok -> r -- ^ Empty continuation
   , onFailure :: StreamState tok -> Builder -> r -- ^ Failure Continuation
   , onRequest :: StreamState tok -> req -> r -- ^ Request Continuation
-  }
+  } deriving (Functor)
 
 -- | The amazing stream parsing monad! This monad tracks the stream
 -- state and context. It short-circuits when exceptions or requests
