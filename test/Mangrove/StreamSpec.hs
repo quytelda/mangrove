@@ -36,6 +36,42 @@ prop_functorComLaw (Fn f) (Fn g) (SP_Unix m) state =
   runSPU (fmap (f . g) m) state == runSPU ((fmap f . fmap g) m) state
 
 --------------------------------------------------------------------------------
+-- Applicative Laws
+
+prop_applicativeIdLaw
+  :: SP_Unix Int
+  -> StreamState (Token UnixScheme)
+  -> Bool
+prop_applicativeIdLaw (SP_Unix m) state =
+  runSPU (pure id <*> m) state == runSPU m state
+
+prop_applicativeHomLaw
+  :: Fun Int Int
+  -> Int
+  -> StreamState (Token UnixScheme)
+  -> Bool
+prop_applicativeHomLaw (Fn f) x state =
+  runSPU (pure f <*> pure x) state == runSPU (pure (f x)) state
+
+prop_applicativeIntLaw
+  :: SP_Unix (Int -> Int)
+  -> Int
+  -> StreamState (Token UnixScheme)
+  -> Bool
+prop_applicativeIntLaw (SP_Unix u) y state =
+  runSPU (u <*> pure y) state == runSPU (pure ($ y) <*> u) state
+
+prop_applicativeComLaw
+  :: SP_Unix (Int -> Int)
+  -> SP_Unix (Int -> Int)
+  -> SP_Unix Int
+  -> StreamState (Token UnixScheme)
+  -> Bool
+prop_applicativeComLaw (SP_Unix u) (SP_Unix v) (SP_Unix w) state =
+  runSPU (pure (.) <*> u <*> v <*> w) state
+  == runSPU (u <*> (v <*> w)) state
+
+--------------------------------------------------------------------------------
 -- Monad Laws
 
 prop_monadLeftId
@@ -115,6 +151,16 @@ spec = do
       prop_functorIdLaw
     prop "satisfies composition law"
       prop_functorComLaw
+
+  describe "Applicative instance" $ do
+    prop "satisfies identity law"
+      prop_applicativeIdLaw
+    prop "satisfies homomorphism law"
+      prop_applicativeHomLaw
+    prop "satisfies interchange law"
+      prop_applicativeIntLaw
+    prop "satisfies composition law"
+      prop_applicativeComLaw
 
   describe "Monad instance" $ do
     prop "satisfies left identity law"
