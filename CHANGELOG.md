@@ -8,6 +8,30 @@ and this project adheres to the
 
 ## Unreleased
 
+## 0.4.0.0 - 2026-09-13
+
+### Added
+
+- Show instances for data structures related to parser trees
+- A TextParser for paths (FilePath)
+- 'Request' type family associated with Scheme class
+- Property based tests using QuickCheck
+
+### Changed
+
+- Split Mangrove.Parser module back into several modules (ParseTree,
+  Scheme, Stream, Token)
+- Move the contents of Mangrove module to Mangrove.Parser, then
+  re-export them from the Mangrove module
+- Parameterize the StreamParser monad by request type
+- Drop phantom type parameter from ProgramInfo
+
+### Removed
+
+- usageInfo method of Scheme class
+- HelpContinuation family
+- HelpHandler type alias
+
 ## 0.3.0.0 - 2026-08-27
 
 ### Added
