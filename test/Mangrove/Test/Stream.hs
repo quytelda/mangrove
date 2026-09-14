@@ -1,7 +1,21 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 
-module Mangrove.Test.Stream where
+module Mangrove.Test.Stream
+  ( -- * Unix Stream Parser
+    SP_Unix_T
+
+    -- * Stream Proxy
+  , StreamProxy(..)
+  , SPState
+  , SPResult(..)
+  , toStreamParser
+  , fromStreamParser
+
+    -- * Unix Stream Parser Wrapper
+  , SP_Unix(..)
+  , runSPU
+  ) where
 
 import           Control.Monad
 import           Data.Text                 (Text)
