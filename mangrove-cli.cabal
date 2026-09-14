@@ -17,7 +17,7 @@ copyright:      Copyright 2026 Quytelda Kahja
 license:        BSD-3-Clause
 license-file:   LICENSE
 build-type:     Simple
-extra-source-files:
+extra-doc-files:
     README.md
     CHANGELOG.md
 
