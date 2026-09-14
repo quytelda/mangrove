@@ -64,7 +64,7 @@ instance Show (TextParser r) where
     . showString ", parserRun = _"
     . showString "}"
 
--- | A nicer way to Show 'TextParser's is to use the parser's hint,
+-- | A nicer way to show t'TextParser's is to use the parser's hint,
 -- surrounded by angle brackets, e.g. @<INT>@.
 showsTextParser :: TextParser a -> ShowS
 showsTextParser TextParser{parserHint = hint} =
