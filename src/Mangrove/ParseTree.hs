@@ -33,8 +33,8 @@ import           Control.Applicative
 import           Data.Kind
 import           Data.Proxy
 
+import           Mangrove.Render
 import           Mangrove.Resolve
-import           Mangrove.Text
 import           Mangrove.Token
 import           Mangrove.Valency
 

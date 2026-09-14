@@ -42,10 +42,10 @@ import           System.Exit
 import           System.IO
 
 import           Mangrove.ParseTree
+import           Mangrove.Render
 import           Mangrove.Resolve
 import           Mangrove.Scheme
 import           Mangrove.Stream
-import           Mangrove.Text
 import           Mangrove.Token
 
 --------------------------------------------------------------------------------

@@ -46,7 +46,7 @@ import qualified Data.Text.Lazy         as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Read         as TR
 
-import           Mangrove.Text
+import           Mangrove.Render
 
 -- | A @TextParser@ is the most basic client-defined parsing unit. It
 -- parses textual data that is not otherwise part of the parsing

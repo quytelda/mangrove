@@ -28,11 +28,11 @@ import           Data.Void
 import           GHC.Generics
 
 import           Mangrove.ParseTree
+import           Mangrove.Render
 import           Mangrove.Resolve
 import           Mangrove.Scheme
 import           Mangrove.Scheme.Common
 import           Mangrove.Stream
-import           Mangrove.Text
 import           Mangrove.TextParser
 import           Mangrove.Token
 import           Mangrove.Valency

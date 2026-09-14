@@ -7,7 +7,7 @@ import           Control.Applicative
 import           Test.Hspec
 
 import           Mangrove
-import           Mangrove.Text
+import           Mangrove.Render
 
 import           TestParsers
 

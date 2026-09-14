@@ -53,7 +53,7 @@ import qualified Data.Text.Lazy         as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import           GHC.Generics
 
-import           Mangrove.Text
+import           Mangrove.Render
 
 -- | The current state of a stream parser.
 --

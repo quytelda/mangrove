@@ -17,7 +17,7 @@ module Mangrove.Token
 import           Data.Kind
 import           Data.Proxy
 
-import           Mangrove.Text
+import           Mangrove.Render
 
 -- | Parsing schemes convert arguments into some form of token. This
 -- class defines the associated token type for a particular scheme.

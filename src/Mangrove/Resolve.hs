@@ -21,7 +21,8 @@ module Mangrove.Resolve
 import           Control.Applicative
 import           Control.Monad.Except
 import qualified Data.List            as List
-import           Mangrove.Text
+
+import           Mangrove.Render
 
 -- | A monad for resolving parsers and expression trees.
 --

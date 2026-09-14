@@ -3,16 +3,15 @@
 {-# LANGUAGE GADTs             #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies      #-}
-{-# LANGUAGE ViewPatterns      #-}
 
 {-|
-Module      : Mangrove.Text
+Module      : Mangrove.Render
 Copyright   : (c) Quytelda Kahja, 2026
 License     : BSD-3-Clause
 
-Utilities for dealing with various types of text.
+Facilities for textual representation of data structures.
 -}
-module Mangrove.Text
+module Mangrove.Render
   ( -- * Text Rendering
     Render(..)
   , renderLazyText

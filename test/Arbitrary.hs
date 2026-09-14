@@ -21,11 +21,11 @@ import           Test.QuickCheck.Instances ()
 
 import           Mangrove
 import           Mangrove.ParseTree
+import           Mangrove.Render
 import qualified Mangrove.Scheme.Sub       as Sub
 import           Mangrove.Scheme.Unix
 import qualified Mangrove.Scheme.Unix      as Unix
 import           Mangrove.Stream
-import           Mangrove.Text
 import           Mangrove.TextParser
 import           Mangrove.Unix
 

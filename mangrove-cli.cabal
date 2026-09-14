@@ -30,13 +30,13 @@ library
       Mangrove
       Mangrove.Parser
       Mangrove.ParseTree
+      Mangrove.Render
       Mangrove.Resolve
       Mangrove.Scheme
       Mangrove.Scheme.Common
       Mangrove.Scheme.Sub
       Mangrove.Scheme.Unix
       Mangrove.Stream
-      Mangrove.Text
       Mangrove.TextParser
       Mangrove.Token
       Mangrove.Unix
