@@ -23,13 +23,14 @@ module Mangrove.Scheme.Sub
   ) where
 
 import           Control.Applicative
-import           Data.Text           (Text)
+import           Data.Text              (Text)
 import           Data.Void
 import           GHC.Generics
 
 import           Mangrove.ParseTree
 import           Mangrove.Resolve
 import           Mangrove.Scheme
+import           Mangrove.Scheme.Common
 import           Mangrove.Stream
 import           Mangrove.Text
 import           Mangrove.TextParser

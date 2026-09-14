@@ -26,7 +26,6 @@ module Mangrove.Text
   , braces
   , quotes
   , renderDelimitedIf
-  , keyEqualsValue
 
     -- * Re-exports
   , Builder
@@ -98,15 +97,3 @@ quotes = between "\"" "\""
 -- unmodified.
 renderDelimitedIf :: Render a => (Builder -> Builder) -> (a -> Bool) -> a -> Builder
 renderDelimitedIf wrap f x = (if f x then wrap else id) (render x)
-
---------------------------------------------------------------------------------
--- Utility Functions
-
--- | Parse a 'Text' of the form "key=value" into ("key", "value"). If
--- the delimiter ('=') does not appear in the string, the result is
--- 'Nothing'.
-keyEqualsValue :: Text -> Maybe (Text, Text)
-keyEqualsValue s =
-  case T.break (== '=') s of
-    (key, T.uncons -> Just (_, value)) -> Just (key, value)
-    _                                  -> Nothing
