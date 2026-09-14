@@ -22,10 +22,13 @@ module Mangrove.Scheme.Unix
   , CommandInfo(..)
 
     -- * Unix Scheme
+  , UnixParser
   , UnixScheme(..)
   , Token(..)
   , UnixRequest(..)
-  , UnixParser
+  , UnixRequest'
+  , helpRequest
+  , versionRequest
 
     -- * Help
   , addHelpOptions
@@ -111,6 +114,49 @@ data CommandInfo = CommandInfo
 cmdHead :: CommandInfo -> Text
 cmdHead = NonEmpty.head . cmdNames
 
+-- | Requests supported by UNIX-style parsers.
+data UnixRequest
+  = VersionRequest -- ^ A request for version information
+  | HelpRequest [Text] -- ^ A request for help and usage information
+  deriving (Eq, Generic, Show)
+
+-- | Context-aware requests
+type UnixRequest' = [Token UnixScheme] -> UnixRequest
+
+-- | A request for help information within the current command context
+helpRequest :: UnixRequest'
+helpRequest context = HelpRequest [cmd | UnixCommand cmd <- context]
+
+-- | A request for version information
+versionRequest :: UnixRequest'
+versionRequest _ = VersionRequest
+
+-- | Generate a response to a help request.
+respondHelpRequest
+  :: [Text]
+  -> ParseTree UnixScheme r
+  -> ProgramInfo
+  -> Text
+respondHelpRequest cmds tree info = renderText
+  $ "Usage:\n"
+  <> formatUsages (programName info) usages <> "\n\n"
+  <> render (programDesc info) <> "\n"
+  <> renderHelp tree cmds
+  where
+    usages = decomposeTree tree cmds
+
+-- | Generate a response to a version request.
+respondVersionRequest
+  :: ProgramInfo
+  -> Text
+respondVersionRequest info = renderText
+  $ render (programName info)
+  <> " version "
+  <> renderVersion (programVersion info)
+  <> "\n"
+  where
+    renderVersion = TLB.fromString . showVersion
+
 -- | A parsing scheme for Unix-style command line syntax.
 data UnixScheme r
   -- | A freeform positional parameter
@@ -120,7 +166,7 @@ data UnixScheme r
   -- | A named option that might support suboptions
   | Option !OptionInfo (ParseTree SubScheme r)
   -- | A special option that raises a request for information
-  | RequestOption !OptionInfo !UnixRequest
+  | RequestOption !OptionInfo !UnixRequest'
   deriving (Functor)
 
 instance Show (UnixScheme r) where
@@ -140,12 +186,11 @@ instance Show (UnixScheme r) where
     . showsPrec 11 info
     . showString " "
     . showsPrec 11 subtree
-  showsPrec p (RequestOption info reqType) =
+  showsPrec p (RequestOption info _) =
     showParen (p >= 10)
     $ showString "RequestOption "
     . showsPrec 11 info
-    . showString " "
-    . showsPrec 11 reqType
+    . showString " _"
 
 instance Valency UnixScheme where
   valency (Parameter _)       = Just 1
@@ -194,38 +239,6 @@ instance HasTokens UnixScheme where
     deriving (Eq, Generic, Show)
 
   delimiter _ = ' '
-
--- | Requests supported by UNIX-style parsers.
-data UnixRequest
-  = VersionRequest -- ^ A request for version information
-  | HelpRequest [Text] -- ^ A request for help and usage information
-  deriving (Eq, Generic, Show)
-
--- | Generate a response to a help request.
-respondHelpRequest
-  :: [Text]
-  -> ParseTree UnixScheme r
-  -> ProgramInfo
-  -> Text
-respondHelpRequest cmds tree info = renderText
-  $ "Usage:\n"
-  <> formatUsages (programName info) usages <> "\n\n"
-  <> render (programDesc info) <> "\n"
-  <> renderHelp tree cmds
-  where
-    usages = decomposeTree tree cmds
-
--- | Generate a response to a version request.
-respondVersionRequest
-  :: ProgramInfo
-  -> Text
-respondVersionRequest info = renderText
-  $ render (programName info)
-  <> " version "
-  <> renderVersion (programVersion info)
-  <> "\n"
-  where
-    renderVersion = TLB.fromString . showVersion
 
 instance Scheme UnixScheme where
   type Request UnixScheme = UnixRequest
@@ -317,7 +330,7 @@ instance Scheme UnixScheme where
           (_, result) <- parseSubargs []
           pure result
 
-  activate (RequestOption info requestType) = do
+  activate (RequestOption info mkRequest) = do
     -- Arguments should never be interpreted as options when escaped.
     getEscaped >>= guard . not
 
@@ -326,7 +339,7 @@ instance Scheme UnixScheme where
     pop_
 
     withContext (UnixOption flag mbound) $
-      request requestType
+      getContext >>= request . mkRequest
 
   activate (Command info subtree) = do
     -- Arguments should never be interpreted as commands when escaped.
@@ -384,10 +397,10 @@ data Usages a = Usages
 -- > decomposeTree tree [] -- No filtering
 -- > decomposeTree tree ["stash", "list"] -- Select "stash list" command
 decomposeTree :: ParseTree UnixScheme r -> [Text] -> Usages r
-decomposeTree (ParseNode (RequestOption info requestType)) commands =
+decomposeTree (ParseNode (RequestOption info mkRequest)) commands =
   -- If we're currently searching for a specific command, then
   -- this request option is irrelevant.
-  let node = ParseNode (RequestOption info requestType)
+  let node = ParseNode (RequestOption info mkRequest)
   in Usages [node | null commands] Nothing []
 
 decomposeTree (ParseNode (Command info subtree)) commands
@@ -461,22 +474,20 @@ addHelpOptions
   -> Text
   -> ParseTree UnixScheme r
   -> ParseTree UnixScheme r
-addHelpOptions flags desc tree = ParseNode (helpOption []) <|> go [] tree
+addHelpOptions flags desc tree = ParseNode helpOption <|> go tree
   where
-    helpOption :: [Text] -> UnixScheme a
-    helpOption = RequestOption (OptionInfo flags desc) . HelpRequest . reverse
+    helpOption :: UnixScheme a
+    helpOption = RequestOption (OptionInfo flags desc) helpRequest
 
-    go :: [Text] -> ParseTree UnixScheme a -> ParseTree UnixScheme a
-    go cmds (ParseNode (Command info subtree)) =
+    go :: ParseTree UnixScheme a -> ParseTree UnixScheme a
+    go (ParseNode (Command info subtree)) =
       ParseNode
       $ Command info
-      $ ParseNode (helpOption cmds') <|> go cmds' subtree
-      where
-        cmds' = cmdHead info : cmds
-    go cmds (ProdNode f l r) = ProdNode f (go cmds l) (go cmds r)
-    go cmds (SumNode l r) = SumNode (go cmds l) (go cmds r)
-    go cmds (ManyNode require p) = ManyNode require (go cmds p)
-    go _ node = node
+      $ ParseNode helpOption <|> go subtree
+    go (ProdNode f l r) = ProdNode f (go l) (go r)
+    go (SumNode l r) = SumNode (go l) (go r)
+    go (ManyNode require p) = ManyNode require (go p)
+    go node = node
 
 data OptionHelp = OptionHelp
   { colShorts :: !TL.Text -- Column 1

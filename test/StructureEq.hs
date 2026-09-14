@@ -34,8 +34,8 @@ instance StructureEq UnixScheme where
     info1 == info2 && structEq subtree1 subtree2
   structEq (Unix.Command info1 subtree1) (Unix.Command info2 subtree2) =
     info1 == info2 && structEq subtree1 subtree2
-  structEq (Unix.RequestOption info1 type1) (Unix.RequestOption info2 type2) =
-    info1 == info2 && type1 == type2
+  structEq (Unix.RequestOption info1 _) (Unix.RequestOption info2 _) =
+    info1 == info2
   structEq _ _ =
     False
 

@@ -304,10 +304,10 @@ calls these "request options". When a request option is matched,
 parsing stops immediately and Mangrove prints the requested
 information without trying to fill in the rest of `Settings`.
 
-There are currently 2 kinds of requests: `HelpRequests` and
-`VersionRequests`. A help request is a request for help and usage
-information for our parser. A version request is for querying the
-program's version.
+There are currently 2 kinds of requests supported by the UNIX scheme:
+help requests and version requests. A help request is a request for
+help and usage information for our parser. A version request is for
+querying the program's version.
 
 > parseSettings' :: UnixParser Settings
 > parseSettings' = opt_help <|> opt_version <|> parseSettings
@@ -315,11 +315,11 @@ program's version.
 >     opt_help =
 >       requestOption ["--help"]
 >       "Display help and usage information"
->       $ HelpRequest []
+>       helpRequest
 >     opt_version =
 >       requestOption ["--version"]
 >       "Display program version"
->       VersionRequest
+>       versionRequest
 
 Running the Parser
 ------------------

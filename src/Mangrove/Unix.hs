@@ -24,6 +24,7 @@ module Mangrove.Unix
   , TextParser(..)
   , DefaultParser(..)
   , UnixRequest(..)
+  , UnixRequest'
 
     -- * Tree-building Combinators
   , parameter
@@ -35,8 +36,12 @@ module Mangrove.Unix
   , subparameter
   , suboption
 
-  -- ** Help Options
+    -- ** Help Options
   , addHelpOptions
+
+    -- * Requests
+  , helpRequest
+  , versionRequest
   ) where
 
 import           Control.Applicative
@@ -87,7 +92,7 @@ switch flags help = optionPure flags help True <|> pure False
 requestOption
   :: NonEmpty Flag
   -> Text
-  -> UnixRequest
+  -> UnixRequest'
   -> UnixParser a
 requestOption flags help = ParseNode . RequestOption (OptionInfo flags help)
 
