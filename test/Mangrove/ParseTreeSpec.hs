@@ -41,55 +41,41 @@ prop_applicativeIdLaw
   :: ParseTree UnixScheme Int
   -> ArgList
   -> Bool
-prop_applicativeIdLaw tree (ArgList args) =
-  result1 == result2
-  where
-    result1 = runArgumentParser (pure id <*> tree) args
-    result2 = runArgumentParser tree args
+prop_applicativeIdLaw m (ArgList args) =
+  runArgumentParser (pure id <*> m) args
+  ==
+  runArgumentParser m args
 
 prop_applicativeHomLaw
   :: Fun Int Int
   -> Int
   -> ArgList
   -> Bool
-prop_applicativeHomLaw (Fn f) value (ArgList args) =
-  result1 == result2
-  where
-    tree1 = pure f <*> pure value :: ParseTree UnixScheme Int
-    tree2 = pure (f value) :: ParseTree UnixScheme Int
-    result1 = runArgumentParser tree1 args
-    result2 = runArgumentParser tree2 args
+prop_applicativeHomLaw (Fn f) x (ArgList args) =
+  runArgumentParser (pure f <*> pure x :: UnixParser Int) args
+  ==
+  runArgumentParser (pure (f x) :: UnixParser Int) args
 
 prop_applicativeIntLaw
-  :: Fun (Int, Int) Int
-  -> ParseTree UnixScheme Int
+  :: ParseTree UnixScheme (Int -> Int)
   -> Int
   -> ArgList
   -> Bool
-prop_applicativeIntLaw (Fn2 f) tree n (ArgList args) =
-  result1 == result2
-  where
-    u = fmap f tree
-    result1 = runArgumentParser (u <*> pure n) args
-    result2 = runArgumentParser (pure ($ n) <*> u) args
+prop_applicativeIntLaw u y (ArgList args) =
+  runArgumentParser (u <*> pure y) args
+  ==
+  runArgumentParser (pure ($ y) <*> u) args
 
 prop_applicativeComLaw
-  :: Fun (Int, Int) Int
-  -> Fun (Int, Int) Int
-  -> ParseTree UnixScheme Int
-  -> ParseTree UnixScheme Int
+  :: ParseTree UnixScheme (Int -> Int)
+  -> ParseTree UnixScheme (Int -> Int)
   -> ParseTree UnixScheme Int
   -> ArgList
   -> Bool
-prop_applicativeComLaw (Fn2 f) (Fn2 g) t1 t2 w (ArgList args) =
-  result1 == result2
-  where
-    u = fmap f t1
-    v = fmap g t2
-    tree1 = pure (.) <*> u <*> v <*> w
-    tree2 = u <*> (v <*> w)
-    result1 = runArgumentParser tree1 args
-    result2 = runArgumentParser tree2 args
+prop_applicativeComLaw u v w (ArgList args) =
+  runArgumentParser (pure (.) <*> u <*> v <*> w) args
+  ==
+  runArgumentParser (u <*> (v <*> w)) args
 
 --------------------------------------------------------------------------------
 
