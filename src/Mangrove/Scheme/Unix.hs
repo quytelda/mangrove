@@ -546,8 +546,8 @@ renderOptionTable xs = foldMap formatRow $ List.sort xs
       , TL.justifyLeft col2width ' ' colLongs
       , TL.justifyLeft col3width ' ' colArg
       , colDesc
-      , "\n"
       ]
+      <> "\n"
 
 renderHeader :: [CommandInfo] -> Builder
 renderHeader [] = mempty
