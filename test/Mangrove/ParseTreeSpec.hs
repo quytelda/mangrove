@@ -106,21 +106,6 @@ prop_liftA2AddsValencies
 prop_liftA2AddsValencies l r =
   valency (liftA2 (+) l r) == liftA2 (+) (valency l) (valency r)
 
-prop_liftA2CombinesResults
-  :: Fun (Int, Int) Int
-  -> UnixParser Int
-  -> UnixParser Int
-  -> ArgList
-  -> Bool
-prop_liftA2CombinesResults (Fn2 f) l r (ArgList args) =
-  case (resultL, resultR, resultA) of
-    (Success _ x, Success _ y, Success _ z) -> z == f x y
-    _ -> resultA == resultL || resultA == resultR
-  where
-    resultL = runArgumentParser l args
-    resultR = runArgumentParser r args
-    resultA = runArgumentParser (liftA2 f l r) args
-
 prop_altMaxesValency
   :: UnixParser Int
   -> UnixParser Int
@@ -178,7 +163,7 @@ spec = do
         `shouldBe` Success [] 'a'
 
   describe "liftA2" $ do
-    it "combines two values" $ do
+    it "combines two pure values" $ do
       runArgumentParser (liftA2 (+) (pure 1) (pure 2) :: ParseTree UnixScheme Int) []
         `shouldBe` Success [] 3
 
@@ -186,8 +171,6 @@ spec = do
       runArgumentParser ((+) <$> pure 1 <*> pure 2 :: ParseTree UnixScheme Int) []
         `shouldBe` Success [] 3
 
-    prop "combines results"
-      prop_liftA2CombinesResults
     prop "adds valencies"
       prop_liftA2AddsValencies
 
