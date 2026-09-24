@@ -63,52 +63,69 @@ instance Arbitrary Name where
   arbitrary = Name <$> genNameText
 
 --------------------------------------------------------------------------------
+-- Text Parsers
+
+genTextParser :: Arbitrary a => Gen (TextParser a)
+genTextParser = TextParser <$> arbitrary <*> arbitrary
+
+instance Arbitrary a => Arbitrary (TextParser a) where
+  arbitrary = genTextParser
+
+--------------------------------------------------------------------------------
 -- Generic ParseTrees
 
-genParser :: Scheme s => Gen (s Int) -> Gen (ParseTree s Int)
+genParser
+  :: (Arbitrary a, CoArbitrary a, Scheme s)
+  => Gen (s a)
+  -> Gen (ParseTree s a)
 genParser genScheme = sized $ \n -> oneof $
   if n <= 0
   then [ pure EmptyNode, ValueNode <$> arbitrary ]
   else [ pure EmptyNode
        , ValueNode <$> arbitrary
        , ParseNode <$> genScheme
-       , ProdNode <$> arbitrary @(Int -> Int -> Int)
+       , ProdNode <$> arbitrary
                   <*> genParser genScheme
                   <*> genParser genScheme
-       , SumNode <$> genParser genScheme <*> genParser genScheme
-         -- ManyNode can only give us a `UnixParser [Int]`, so we have
-         -- to wrap it in order to make the types match.
-       , (fmap . fmap) sum $ ManyNode <$> arbitrary <*> genParser genScheme
+       , SumNode <$> genParser genScheme
+                 <*> genParser genScheme
+         -- `ManyNode` can only give us a `ParseTree s [a]`, so we
+         -- have to wrap it in order to make the types match. This
+         -- also has the nice side-effect of ensuring we only generate
+         -- trees whose structure is preserved under fmap.
+       , liftA2 fmap arbitrary
+         $ ManyNode <$> arbitrary
+                    <*> genParser genScheme
        ]
 
 --------------------------------------------------------------------------------
 -- SubScheme Parsers
 
 instance Arbitrary (Token SubScheme) where
-  arbitrary =
-    oneof [ SubAssoc <$> genNameText <*> arbitrary
-          , SubArgument <$> arbitrary
-          ]
+  arbitrary = oneof
+    [ SubAssoc <$> genNameText <*> arbitrary
+    , SubArgument <$> arbitrary
+    ]
 
 instance CoArbitrary (Token SubScheme)
 
-genSubScheme :: Gen (SubScheme Int)
-genSubScheme =
-  oneof [ pure $ Sub.Parameter defaultParser
-        , flip Sub.Option defaultParser <$> arbitrary
-        ]
+genSubScheme :: Arbitrary a => Gen (SubScheme a)
+genSubScheme = oneof
+  [ Sub.Parameter <$> arbitrary
+  , Sub.Option <$> arbitrary <*> arbitrary
+  ]
 
-instance Arbitrary (ParseTree SubScheme Int) where
+instance (Arbitrary a, CoArbitrary a) => Arbitrary (ParseTree SubScheme a) where
   arbitrary = genParser genSubScheme
 
 --------------------------------------------------------------------------------
 -- UnixScheme Parsers
 
 instance Arbitrary Flag where
-  arbitrary =
-    oneof [ LongFlag <$> genNameText
-          , ShortFlag <$> genNameChar
-          ]
+  arbitrary = oneof
+    [ LongFlag <$> genNameText
+    , ShortFlag <$> genNameChar
+    ]
 
 instance CoArbitrary Flag
 
@@ -119,28 +136,31 @@ instance Arbitrary Unix.CommandInfo where
   arbitrary = CommandInfo <$> fmap getNames arbitrary <*> arbitrary
 
 instance Arbitrary (Token UnixScheme) where
-  arbitrary =
-    oneof [ UnixArgument <$> arbitrary
-          , UnixCommand <$> genNameText
-          , UnixOption <$> arbitrary <*> arbitrary
-          ]
+  arbitrary = oneof
+    [ UnixArgument <$> arbitrary
+    , UnixCommand <$> genNameText
+    , UnixOption <$> arbitrary <*> arbitrary
+    ]
 
 instance CoArbitrary (Token UnixScheme)
 
 instance Arbitrary UnixRequest where
-  arbitrary = elements [HelpRequest [], VersionRequest]
+  arbitrary = elements
+    [ HelpRequest []
+    , VersionRequest
+    ]
 
 instance CoArbitrary UnixRequest
 
-genUnixScheme :: Gen (UnixScheme Int)
-genUnixScheme =
-  oneof [ pure $ Unix.Parameter defaultParser
-        , Unix.Option <$> arbitrary <*> arbitrary
-        , Unix.Command <$> arbitrary <*> arbitrary
-        , Unix.RequestOption <$> arbitrary <*> arbitrary
-        ]
+genUnixScheme :: (Arbitrary a, CoArbitrary a) => Gen (UnixScheme a)
+genUnixScheme = oneof
+  [ Unix.Parameter <$> arbitrary
+  , Unix.Option <$> arbitrary <*> arbitrary
+  , Unix.Command <$> arbitrary <*> arbitrary
+  , Unix.RequestOption <$> arbitrary <*> arbitrary
+  ]
 
-instance Arbitrary (ParseTree UnixScheme Int) where
+instance (Arbitrary a, CoArbitrary a) => Arbitrary (ParseTree UnixScheme a) where
   arbitrary = genParser genUnixScheme
 
 --------------------------------------------------------------------------------
