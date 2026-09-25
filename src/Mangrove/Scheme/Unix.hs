@@ -358,7 +358,7 @@ instance Scheme UnixScheme where
 instance Render (UnixScheme r) where
   render (Parameter tp) = render $ parserHint tp
   render (Command info subtree) =
-    "{" <> render (cmdHead info) <> " " <> render subtree <> "}"
+    render (cmdHead info) <> " " <> render subtree
   render (Option info subtree) =
     render flag
     <> if nullary subtree
