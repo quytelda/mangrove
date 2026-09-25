@@ -1,9 +1,11 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE ExplicitForAll    #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE ViewPatterns      #-}
@@ -139,7 +141,7 @@ respondHelpRequest
   -> ProgramInfo
   -> Text
 respondHelpRequest cmds tree info = renderText
-  $ "Usage:\n"
+  $ "Usage(s):\n"
   <> formatUsages (programName info) usages <> "\n\n"
   <> render (programDesc info) <> "\n"
   <> renderHelp tree cmds
@@ -378,15 +380,40 @@ instance Render (Token UnixScheme) where
   render (UnixOption f@(LongFlag _) (Just v))  = render f <> "=" <> render v
   render (UnixOption f@(ShortFlag _) (Just v)) = render f <> render v
 
--- | A factored group of subtrees (branches) representing different
--- usage modes.
-data Usages a = Usages
-  [ParseTree UnixScheme Void]      -- ^ Request branches
-  (Maybe (ParseTree UnixScheme a)) -- ^ Uncategorized branch
-  [ParseTree UnixScheme a]         -- ^ Command branches
+-- | Convenient type alias for Unix-flavored parse trees.
+type UnixParser = ParseTree UnixScheme
 
--- | Factor a 'ParseTree' into several independant subtrees
--- (branches), potentially filtered to specific commands.
+--------------------------------------------------------------------------------
+-- Decomposing Trees
+
+data Branch r
+  = ReqBranch (ParseTree UnixScheme Void) -- ^ Request branches
+  | CmdBranch (ParseTree UnixScheme r)    -- ^ Command branches
+  deriving (Functor, Show)
+
+unwrapBranch :: Branch r -> ParseTree UnixScheme r
+unwrapBranch (ReqBranch b) = vacuous b
+unwrapBranch (CmdBranch b) = b
+
+-- | Alter the shape of a 'Branch'.
+mapBranch
+  :: (forall a. ParseTree UnixScheme a -> ParseTree UnixScheme a)
+  -> Branch r
+  -> Branch r
+mapBranch f (ReqBranch b) = ReqBranch $ f b
+mapBranch f (CmdBranch b) = CmdBranch $ f b
+
+-- | A factored group of subtrees representing different usage modes.
+data Usages a = Usages
+  (Maybe (ParseTree UnixScheme a)) -- ^ Trunk
+  [Branch a]                       -- ^ Branches
+
+usagesToList :: Usages r -> [ParseTree UnixScheme r]
+usagesToList (Usages trunk branches) =
+  maybeToList trunk <> fmap unwrapBranch branches
+
+-- | Factor a 'ParseTree' into several independant subtrees (a trunk
+-- and branches), potentially filtered to specific commands.
 --
 -- Each branch can be thought of as corresponding to one particular
 -- mode of operation, in that it contains at least one command or
@@ -402,20 +429,20 @@ decomposeTree (ParseNode (RequestOption info mkRequest)) commands =
   -- If we're currently searching for a specific command, then
   -- this request option is irrelevant.
   let node = ParseNode (RequestOption info mkRequest)
-  in Usages [node | null commands] Nothing []
+  in Usages Nothing [ReqBranch node | null commands]
 
 decomposeTree (ParseNode (Command info subtree)) commands
   | commandMismatch =
     -- We are looking for a specific command and it's not this
     -- one, so don't return any trees.
-    Usages [] Nothing []
+    Usages Nothing []
   | otherwise =
     -- Either this is the command we're looking for, or we're not
     -- looking for a command.
-    let Usages req misc cmd = decomposeTree subtree (drop 1 commands)
-        req' = ParseNode . Command info <$> req
-        cmd' = ParseNode . Command info <$> maybeToList misc <> cmd
-    in Usages req' Nothing cmd'
+    let Usages trunk branches = decomposeTree subtree (drop 1 commands)
+    in Usages Nothing
+       $ mapBranch (ParseNode . Command info)
+       <$> maybeToList (fmap CmdBranch trunk) <> branches
   where
     commandMismatch =
       case commands of
@@ -423,22 +450,20 @@ decomposeTree (ParseNode (Command info subtree)) commands
         []            -> False
 
 decomposeTree (SumNode l r) commands =
-  let Usages reqLs miscL cmdLs = decomposeTree l commands
-      Usages reqRs miscR cmdRs = decomposeTree r commands
+  let Usages trunkL branchLs = decomposeTree l commands
+      Usages trunkR branchRs = decomposeTree r commands
 
-      -- When both subtrees yield uncategorized branches, then we
-      -- want to sum them normally. However, if only one subtree
-      -- yields an uncategorized branch, we can just replace sum
-      -- with that branch.
-      misc = liftA2 SumNode miscL miscR
-             <|> miscL
-             <|> miscR
-  in Usages (reqLs <> reqRs) misc (cmdLs <> cmdRs)
+      -- If both subtrees have trunks, we want to sum them normally.
+      -- However, if only one subtree yields a trunk, we can replace
+      -- the sum with it.
+      trunk = liftA2 SumNode trunkL trunkR
+             <|> trunkL
+             <|> trunkR
+  in Usages trunk (branchLs <> branchRs)
 
 decomposeTree (ProdNode f l r) commands =
-  let Usages reqLs miscL cmdLs = decomposeTree l commands
-      Usages reqRs miscR cmdRs = decomposeTree r commands
-      prod = ProdNode f
+  let Usages trunkL branchLs = decomposeTree l commands
+      Usages trunkR branchRs = decomposeTree r commands
 
       -- Requests prevent any further parsing, so if one of the
       -- subtrees yields request branches, the other subtree is
@@ -446,24 +471,24 @@ decomposeTree (ProdNode f l r) commands =
       -- branches, then a product node behaves effectively like a
       -- sum node because we could never actually trigger both
       -- requests.
-      reqs = reqRs <> reqLs
-      misc = liftA2 prod miscL miscR
-      cmds = liftA2 prod (maybeToList miscL) cmdRs <>
-             liftA2 prod cmdLs (maybeToList miscR)
-  in Usages reqs misc cmds
+      graft with _trunk _branches = _branches >>= \case
+        ReqBranch b -> pure $ ReqBranch b
+        CmdBranch b -> CmdBranch . with b <$> maybeToList _trunk
 
-decomposeTree tree _ = Usages [] (Just tree) []
+      prod = ProdNode f
+      trunk = liftA2 prod trunkL trunkR
+      branches = graft (flip prod) trunkL branchRs <>
+                 graft prod        trunkR branchLs
+  in Usages trunk branches
+
+decomposeTree tree _ = Usages (Just tree) []
 
 formatUsages :: Text -> Usages r -> Builder
-formatUsages progName (Usages reqs misc cmds) =
+formatUsages progName usages =
   mconcat
   $ List.intersperse "\n"
-  $ map (\t -> TLB.fromText progName <> " " <> render t) usageModes
-  where
-    usageModes = map vacuous reqs <> maybeToList misc <> cmds
-
--- | Convenient type alias for Unix-flavored parse trees.
-type UnixParser = ParseTree UnixScheme
+  $ fmap (\t -> "  " <> TLB.fromText progName <> " " <> render t)
+  $ usagesToList usages
 
 --------------------------------------------------------------------------------
 -- Help
