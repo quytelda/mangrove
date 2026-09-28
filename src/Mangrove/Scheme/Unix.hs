@@ -1,12 +1,10 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE ExplicitForAll    #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes        #-}
-{-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE ViewPatterns      #-}
 
@@ -40,8 +38,8 @@ module Mangrove.Scheme.Unix
 import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.Except
-import qualified Data.List              as List
-import           Data.List.NonEmpty     (NonEmpty)
+import           Data.Foldable
+import           Data.List.NonEmpty     (NonEmpty (..), nonEmpty)
 import qualified Data.List.NonEmpty     as NonEmpty
 import           Data.Map.Strict        (Map)
 import qualified Data.Map.Strict        as Map
@@ -49,7 +47,6 @@ import           Data.Maybe
 import           Data.String
 import           Data.Text              (Text)
 import qualified Data.Text              as T
-import qualified Data.Text.Lazy         as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import           Data.Version
 import           Data.Void
@@ -81,8 +78,8 @@ import           Mangrove.Valency
 -- Thus, you can write @"--flop"@ instead of @LongFlag "flop"@ and
 -- @"-c"@ instead of @ShortFlag \'c\'@.
 data Flag
-  = LongFlag !Text
-  | ShortFlag !Char
+  = ShortFlag !Char
+  | LongFlag !Text
   deriving (Eq, Generic, Ord, Show)
 
 instance IsString Flag where
@@ -142,7 +139,7 @@ respondHelpRequest
   -> Text
 respondHelpRequest cmds tree info = renderText
   $ "Usage(s):\n"
-  <> formatUsages (programName info) usages <> "\n\n"
+  <> formatUsages (programName info) usages <> "\n"
   <> render (programDesc info) <> "\n"
   <> renderHelp tree cmds
   where
@@ -484,11 +481,9 @@ decomposeTree (ProdNode f l r) commands =
 decomposeTree tree _ = Usages (Just tree) []
 
 formatUsages :: Text -> Usages r -> Builder
-formatUsages progName usages =
-  mconcat
-  $ List.intersperse "\n"
-  $ fmap (\t -> "  " <> TLB.fromText progName <> " " <> render t)
-  $ usagesToList usages
+formatUsages progName =
+  foldMap (\t -> "  " <> render progName <> " " <> render t <> "\n")
+  . usagesToList
 
 --------------------------------------------------------------------------------
 -- Help
@@ -515,41 +510,37 @@ addHelpOptions flags desc tree = ParseNode helpOption <|> go tree
     go (ManyNode require p) = ManyNode require (go p)
     go node = node
 
-data OptionHelp = OptionHelp
-  { colShorts :: !TL.Text -- Column 1
-  , colLongs  :: !TL.Text -- Column 2
-  , colArg    :: !TL.Text -- Column 3
-  , colDesc   :: !TL.Text -- Column 4
-  } deriving (Eq, Ord, Show)
+-- | Pretty-print a list of flags.
+displayFlagList :: NonEmpty Flag -> Builder
+displayFlagList =
+  fold
+  . NonEmpty.intersperse ", "
+  . fmap render
+  . NonEmpty.sort
 
-makeOptionHelp :: OptionInfo -> ParseTree SubScheme r -> OptionHelp
-makeOptionHelp OptionInfo{..} subtree =
-  OptionHelp
-  { colLongs  = fmtFlagList longs
-  , colShorts = fmtFlagList shorts
-  , colArg    = if nullary subtree
-                then mempty
-                else renderLazyText subtree
-  , colDesc   = TL.fromStrict optHelp
-  }
-  where
-    isLongFlag LongFlag{} = True
-    isLongFlag _          = False
-    (longs, shorts) = NonEmpty.partition isLongFlag optFlags
-    fmtFlagList = TL.intercalate ", " . fmap renderLazyText
+-- | Pretty-print a description of an option with the given
+-- 'OptionInfo' and subtree.
+displayOption :: OptionInfo -> ParseTree SubScheme r -> Builder
+displayOption info subtree =
+  let flagList = displayFlagList (optFlags info)
+      paramInfo = if nullary subtree
+                  then mempty
+                  else " " <> render subtree
+  in "  " <> flagList <> paramInfo <> "\n" <>
+     "         " <> render (optHelp info) <> "\n"
 
 -- | Enumerate descriptive information for all options available in a
 -- parse tree, indexed by the set of commands under which they exist.
-collectOptions :: ParseTree UnixScheme r -> Map [CommandInfo] [OptionHelp]
+collectOptions :: ParseTree UnixScheme r -> Map [CommandInfo] [Builder]
 collectOptions tree = go tree (Map.singleton [] [])
   where
     go :: ParseTree UnixScheme r
-       -> Map [CommandInfo] [OptionHelp]
-       -> Map [CommandInfo] [OptionHelp]
+       -> Map [CommandInfo] [Builder]
+       -> Map [CommandInfo] [Builder]
     go (ParseNode (Option info subtree)) =
-      Map.adjust (makeOptionHelp info subtree :) []
+      Map.adjust (displayOption info subtree :) []
     go (ParseNode (RequestOption info _)) =
-      Map.adjust (makeOptionHelp info empty :) []
+      Map.adjust (displayOption info empty :) []
     go (ParseNode (Command info subtree)) =
       Map.union $ Map.mapKeys (info :) $ collectOptions subtree
     go (ProdNode _ l r) = go r . go l
@@ -557,57 +548,43 @@ collectOptions tree = go tree (Map.singleton [] [])
     go (ManyNode _ p)   = go p
     go _                = id
 
-renderOptionTable :: [OptionHelp] -> Builder
-renderOptionTable xs = foldMap formatRow $ List.sort xs
-  where
-    maxLengthBy f = maximum $ TL.length . f <$> xs
-    col1width = maxLengthBy colShorts
-    col2width = maxLengthBy colLongs
-    col3width = maxLengthBy colArg
+formatCommandList :: NonEmpty CommandInfo -> Text
+formatCommandList (current :| parents) =
+  T.intercalate ", "
+  $ T.unwords . reverse . (: fmap cmdHead parents)
+  <$> NonEmpty.toList (cmdNames current)
 
-    formatRow OptionHelp{..} =
-      TLB.fromLazyText $ TL.intercalate "  "
-      [ TL.justifyLeft col1width ' ' colShorts
-      , TL.justifyLeft col2width ' ' colLongs
-      , TL.justifyLeft col3width ' ' colArg
-      , colDesc
-      ]
-      <> "\n"
-
-renderHeader :: [CommandInfo] -> Builder
-renderHeader [] = mempty
-renderHeader cmds@(info : _) =
-  fmtCommand cmds
-  <> " command"
-  <> aliasInfo
-  <> ": "
-  <> render (cmdHelp info)
-  <> "\n"
-  where
-    fmtCommand = quotes . render . T.unwords . fmap cmdHead . reverse
-    aliases = NonEmpty.tail $ cmdNames info
-    aliasInfo =
-      if null aliases
-      then mempty
-      else " (alt: " <> render (T.intercalate ", " aliases) <> ")"
+renderCmdHeader :: NonEmpty CommandInfo -> Builder
+renderCmdHeader infos =
+  render (formatCommandList infos) <> "\n"
+  <> "  " <> (render . cmdHelp . NonEmpty.head) infos <> "\n\n"
 
 -- | Format an index of commands and options for help output display.
-renderTables :: Map [CommandInfo] [OptionHelp] -> Builder
-renderTables =
-  Map.foldlWithKey
-  (\acc cmds desc ->
-      acc
-      <> "\n"
-      <> renderHeader cmds
-      <> renderOptionTable desc
-  ) mempty
+renderTables :: Map [CommandInfo] [Builder] -> Builder
+renderTables m =
+  case Map.findWithDefault [] [] m of
+    [] -> mempty
+    gs -> "\nGLOBAL OPTIONS\n\n"
+          <> mconcat gs
+  <>
+  if all null (Map.keys m)
+  then mempty
+  else "\nSUBCOMMANDS\n\n"
+  <>
+  Map.foldrWithKey
+  (\cmds bs acc ->
+     case nonEmpty cmds of
+       Nothing -> acc
+       Just cmds' ->
+         renderCmdHeader cmds' <> mconcat bs <> acc
+  ) mempty m
 
 -- | Select only the options tables which exist under a particular
 -- command sequence.
 selectSubtable
   :: [Text]
-  -> Map [CommandInfo] [OptionHelp]
-  -> Map [CommandInfo] [OptionHelp]
+  -> Map [CommandInfo] [a]
+  -> Map [CommandInfo] [a]
 selectSubtable cmds =
   Map.filterWithKey (\infos _ -> isParentCommand cmds infos)
 
