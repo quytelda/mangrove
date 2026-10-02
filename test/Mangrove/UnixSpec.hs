@@ -1,11 +1,12 @@
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications  #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module Mangrove.UnixSpec where
 
 import           Control.Applicative
+import           Data.List.NonEmpty  (NonEmpty(..))
+import qualified Data.List.NonEmpty  as NonEmpty
 import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           Data.Version
@@ -168,23 +169,27 @@ spec = do
       length (filter (T.isInfixOf " set ") usageLines)
         `shouldBe` 2
 
-    context "when global options exist" $ do
-      it "adds a global options section" $ do
-        helpResponse `shouldSatisfy` T.isInfixOf "GLOBAL OPTIONS"
-
     context "when no global options exist" $ do
       it "has no global options section" $ do
         makeHelpResponse cmd_create programInfo
           `shouldSatisfy` (not . T.isInfixOf "GLOBAL OPTIONS")
 
-    context "when subcommands exist" $ do
-      it "adds a subcommands section" $ do
-        helpResponse `shouldSatisfy` T.isInfixOf "SUBCOMMANDS"
+    context "when global options exist" $ do
+      it "adds a global options section" $ do
+        helpResponse `shouldSatisfy` T.isInfixOf "GLOBAL OPTIONS"
 
     context "when no subcommands exist" $ do
       it "has no subcommands section" $ do
         makeHelpResponse parseCreateSettings programInfo
           `shouldSatisfy` (not . T.isInfixOf "SUBCOMMANDS")
+
+    context "when subcommands exist" $ do
+      it "adds a subcommands section" $ do
+        helpResponse `shouldSatisfy` T.isInfixOf "SUBCOMMANDS"
+
+      it "adds an option table for each subcommand" $ do
+        NonEmpty.head <$> getSubcommandTables helpResponse
+          `shouldBe` ["delete","create","set config","get config","config"]
 
 --------------------------------------------------------------------------------
 -- Helper Functions
@@ -198,3 +203,15 @@ getUsageLines info =
   . takeWhile (T.isPrefixOf ("  " <> programName info))
   . drop 1
   . T.lines
+
+getSubcommandTables :: Text -> [NonEmpty Text]
+getSubcommandTables help =
+  go [] $ drop 2 $ dropWhile (/= "SUBCOMMANDS") $ T.lines help
+  where
+    isHeaderLine text = not $ T.null text || T.isPrefixOf "  " text
+
+    go :: [NonEmpty Text] -> [Text] -> [NonEmpty Text]
+    go results [] = results
+    go results (line : _lines) =
+      let (body, rest) = break isHeaderLine _lines
+      in go ((line :| body) : results) rest
