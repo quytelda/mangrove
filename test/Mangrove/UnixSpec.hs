@@ -21,7 +21,7 @@ import           Mangrove.Unix
 -- Example Interface
 
 prm_username :: UnixParser Text
-prm_username = parameter defaultParser
+prm_username = parameter defaultParser { parserHint = "USERNAME" }
 
 data CreateSettings = CreateSettings
   { csUid      :: Maybe Int
@@ -52,26 +52,66 @@ parseDeleteSettings = DeleteSettings
       switch ["-d"]
       "Delete the user's home directory"
 
+newtype CfgGetSettings = CfgGetSettings Text
+  deriving (Eq, Show)
+
+parseCfgGetSettings :: UnixParser CfgGetSettings
+parseCfgGetSettings = CfgGetSettings
+  <$> parameter defaultParser
+
+data CfgSetSettings = CfgSetSettings Text Text
+  deriving (Eq, Show)
+
+parseCfgSetSettings :: UnixParser CfgSetSettings
+parseCfgSetSettings = CfgSetSettings
+  <$> parameter defaultParser
+  <*> parameter defaultParser
+
+data ConfigMode
+  = CfgGet CfgGetSettings
+  | CfgSet CfgSetSettings
+  deriving (Eq, Show)
+
+parseConfigMode :: UnixParser ConfigMode
+parseConfigMode =
+  CfgGet <$> cmd_get <|>
+  CfgSet <$> cmd_set
+  where
+    cmd_get =
+      command ["get"]
+      "Set a config value"
+      parseCfgGetSettings
+    cmd_set =
+      command ["set"]
+      "Set a config value"
+      parseCfgSetSettings
+
 data Mode
   = Create CreateSettings
   | Delete DeleteSettings
+  | Config Text ConfigMode
   deriving (Eq, Show)
 
-cmd_create :: UnixParser CreateSettings
+cmd_create :: UnixParser Mode
 cmd_create =
   command ["create"]
   "Create a new user"
-  parseCreateSettings
+  $ Create <$> parseCreateSettings
 
 parseMode :: UnixParser Mode
 parseMode =
-  Create <$> cmd_create <|>
-  Delete <$> cmd_delete
+  cmd_create <|>
+  cmd_delete <|>
+  cmd_config
   where
     cmd_delete =
       command ["delete"]
       "Delete a new user"
-      parseDeleteSettings
+      $ Delete <$> parseDeleteSettings
+    cmd_config =
+      command ["config"]
+      "Manage configuration settings"
+      $ Config <$> prm_username <*> parseConfigMode
 
 data Settings = Settings
   { sVerbose :: Bool -- ^ Show extra output
@@ -108,17 +148,24 @@ programInfo = ProgramInfo
 spec :: Spec
 spec = do
   describe "Help Output" $ do
+
     let helpResponse = makeHelpResponse parseSettings programInfo
         usageLines = getUsageLines programInfo helpResponse
 
     it "displays usage lines for each request option" $ do
       length (filter (T.isSuffixOf "--help") usageLines)
-        `shouldBe` 3
+        `shouldBe` 6
 
     it "displays usage lines for each command" $ do
       length (filter (T.isInfixOf " create ") usageLines)
         `shouldBe` 2
       length (filter (T.isInfixOf " delete ") usageLines)
+        `shouldBe` 2
+      length (filter (T.isInfixOf " config ") usageLines)
+        `shouldBe` 5
+      length (filter (T.isInfixOf " get ") usageLines)
+        `shouldBe` 2
+      length (filter (T.isInfixOf " set ") usageLines)
         `shouldBe` 2
 
     context "when global options exist" $ do
