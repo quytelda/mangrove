@@ -569,14 +569,14 @@ renderTables m =
   <>
   if all null (Map.keys m)
   then mempty
-  else "\nSUBCOMMANDS\n\n"
+  else "\nSUBCOMMANDS\n"
   <>
   Map.foldrWithKey
   (\cmds bs acc ->
      case nonEmpty cmds of
        Nothing -> acc
        Just cmds' ->
-         renderCmdHeader cmds' <> mconcat bs <> acc
+         "\n" <> renderCmdHeader cmds' <> mconcat bs <> acc
   ) mempty m
 
 -- | Select only the options tables which exist under a particular
