@@ -65,6 +65,7 @@ test-suite mangrove-cli-test
       Mangrove.ParseTreeSpec
       Mangrove.StreamSpec
       Mangrove.Test.Stream
+      Mangrove.UnixSpec
       Spec
       StructureEq
       TestParsers
