@@ -107,7 +107,7 @@ parseMode =
   where
     cmd_delete =
       command ["delete", "rm"]
-      "Delete a new user"
+      "Delete a user"
       $ Delete <$> parseDeleteSettings
     cmd_config =
       command ["config"]
@@ -195,6 +195,13 @@ spec = do
                      , "config get, config read"
                      , "config"
                      ]
+
+      it "shows the description for each subcommand" $ do
+        helpResponse `shouldSatisfy` T.isInfixOf "Read a config value"
+        helpResponse `shouldSatisfy` T.isInfixOf "Write a config value"
+        helpResponse `shouldSatisfy` T.isInfixOf "Create a new user"
+        helpResponse `shouldSatisfy` T.isInfixOf "Delete a user"
+        helpResponse `shouldSatisfy` T.isInfixOf "Manage configuration settings"
 
 --------------------------------------------------------------------------------
 -- Helper Functions
