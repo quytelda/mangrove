@@ -79,12 +79,12 @@ parseConfigMode =
   CfgSet <$> cmd_set
   where
     cmd_get =
-      command ["get"]
-      "Set a config value"
+      command ["get", "read"]
+      "Read a config value"
       parseCfgGetSettings
     cmd_set =
-      command ["set"]
-      "Set a config value"
+      command ["set", "write"]
+      "Write a config value"
       parseCfgSetSettings
 
 data Mode
@@ -106,7 +106,7 @@ parseMode =
   cmd_config
   where
     cmd_delete =
-      command ["delete"]
+      command ["delete", "rm"]
       "Delete a new user"
       $ Delete <$> parseDeleteSettings
     cmd_config =
@@ -189,7 +189,12 @@ spec = do
 
       it "adds an option table for each subcommand" $ do
         NonEmpty.head <$> getSubcommandTables helpResponse
-          `shouldBe` ["delete","create","set config","get config","config"]
+          `shouldBe` [ "delete, rm"
+                     , "create"
+                     , "config set, config write"
+                     , "config get, config read"
+                     , "config"
+                     ]
 
 --------------------------------------------------------------------------------
 -- Helper Functions

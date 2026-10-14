@@ -549,15 +549,19 @@ collectOptions tree = go tree (Map.singleton [] [])
     go _                = id
 
 formatCommandList :: NonEmpty CommandInfo -> Text
-formatCommandList (current :| parents) =
+formatCommandList cmdList =
   T.intercalate ", "
-  $ T.unwords . reverse . (: fmap cmdHead parents)
-  <$> NonEmpty.toList (cmdNames current)
+  $ T.unwords
+  <$> qualifiedCmds
+  where
+    currentNames = NonEmpty.toList $ cmdNames $ NonEmpty.last cmdList
+    parentsNames = fmap cmdHead $ NonEmpty.init cmdList
+    qualifiedCmds = [parentsNames <> [name] | name <- currentNames]
 
 renderCmdHeader :: NonEmpty CommandInfo -> Builder
 renderCmdHeader infos =
   render (formatCommandList infos) <> "\n"
-  <> "  " <> (render . cmdHelp . NonEmpty.head) infos <> "\n\n"
+  <> "  " <> (render . cmdHelp . NonEmpty.last) infos <> "\n\n"
 
 -- | Format an index of commands and options for help output display.
 renderTables :: Map [CommandInfo] [Builder] -> Builder
