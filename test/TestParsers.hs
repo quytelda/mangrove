@@ -23,6 +23,9 @@ opt_e_param = option [ShortFlag 'e'] "" $ subparameter defaultParser
 opt_f_unit :: UnixParser ()
 opt_f_unit = option [ShortFlag 'f'] "" $ pure ()
 
+opt_example_intList :: UnixParser [Int]
+opt_example_intList = option [LongFlag "example"] "" $ some $ subparameter defaultParser
+
 opt_example_param :: UnixParser Text
 opt_example_param = option [LongFlag "example"] "" $ subparameter defaultParser
 

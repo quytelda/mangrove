@@ -6,12 +6,14 @@ module Mangrove.ParseTreeSpec (spec) where
 
 import           Control.Applicative
 import           Data.Text             (Text)
+import qualified Data.Text             as T
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck       hiding (Result (..))
 
 import           Mangrove
 import           Mangrove.ParseTree
+import           Mangrove.Render
 import           Mangrove.Scheme.Unix
 import           Mangrove.Valency
 
@@ -118,6 +120,26 @@ prop_altEmptyIdentity
   -> Bool
 prop_altEmptyIdentity append tree (ArgList args) =
   runArgumentParser tree args == runArgumentParser (append tree) args
+
+--------------------------------------------------------------------------------
+
+prop_usageNullForNullaryNodes
+  :: UnixParser Int
+  -> Bool
+prop_usageNullForNullaryNodes tree =
+  nullary tree == (usage tree == "")
+
+prop_bracketsOptionals
+  :: UnixParser Int
+  -> Bool
+prop_bracketsOptionals tree =
+  not (isOptional tree) || (isBracketed . renderText . usage) tree
+  where
+    isBracketed text = or $ do
+      (start, _) <- T.uncons text
+      (_, end)   <- T.unsnoc text
+
+      pure $ start == '[' && end == ']'
 
 --------------------------------------------------------------------------------
 
@@ -249,3 +271,69 @@ spec = do
     it "parses zero instances" $ do
       runArgumentParser (optional opt_e_param) ["blah"]
         `shouldBe` Success ["blah"] Nothing
+
+  describe "Usage" $ do
+    prop "usage is empty iff the tree is nullary" $
+      prop_usageNullForNullaryNodes
+
+    prop "optional trees are bracketed" $
+      prop_bracketsOptionals
+
+    it "separates alternatives with pipes" $ do
+      usage (opt_e_param <|> opt_example_param <|> cmd_example_tree)
+        `shouldBe` "-eSTRING|--example=STRING|example asdf"
+
+    it "separates series with the scheme delimiter" $ do
+      usage ((,,) <$> opt_e_param <*> opt_example_param <*> cmd_example_tree)
+        `shouldBe` "-eSTRING --example=STRING example asdf"
+
+    it "brackets products inside sums" $ do
+      usage ( (,) <$> opt_e_unit <*> opt_e_unit
+              <|>
+              (,) <$> opt_f_unit <*> opt_f_unit
+            )
+        `shouldBe` "{-e -e}|{-f -f}"
+
+    it "brackets sums inside products" $ do
+      usage ( (,)
+              <$> (opt_e_unit <|> opt_f_unit)
+              <*> (opt_example_param <|> opt_e_param)
+            )
+        `shouldBe` "{-e|-f} {--example=STRING|-eSTRING}"
+
+    it "omits empty nodes from alternative lists" $ do
+      usage ( empty
+              <|> opt_e_param
+              <|> empty
+              <|> opt_example_param
+              <|> cmd_example_tree
+              <|> empty
+            )
+        `shouldBe` "-eSTRING|--example=STRING|example asdf"
+
+    it "omits static nodes from series lists" $ do
+      usage ( (,,,,,)
+              <$> empty
+              <*> opt_e_param
+              <*> pure 'a'
+              <*> opt_example_param
+              <*> cmd_example_tree
+              <*> empty
+            )
+        `shouldBe` "-eSTRING --example=STRING example asdf"
+
+    it "repeatable inputs are followed by \"...\"" $ do
+      usage (some opt_e_unit)
+        `shouldBe` "-e..."
+
+      usage opt_example_intList
+        `shouldBe` "--example=INT..."
+
+      usage (some opt_example_param)
+        `shouldBe` "{--example=STRING}..."
+
+      usage (some $ (,) <$> opt_e_param <*> opt_f_unit)
+        `shouldBe` "{-eSTRING -f}..."
+
+      usage (some $ opt_e_unit <|> opt_f_unit)
+        `shouldBe` "{-e|-f}..."
