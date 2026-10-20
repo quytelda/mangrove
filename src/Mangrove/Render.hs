@@ -20,6 +20,7 @@ module Mangrove.Render
   , hPutBuilder
 
     -- * Helpers & Combinators
+  , munless
   , between
   , brackets
   , braces
@@ -72,6 +73,10 @@ hPutBuilder handle = TLIO.hPutStr handle . TLB.toLazyText
 
 --------------------------------------------------------------------------------
 -- Combinators
+
+-- | Similar to 'Control.Monad.unless', but for monoids.
+munless :: Monoid m => Bool -> m -> m
+munless condition m = if condition then mempty else m
 
 -- | @between open close s@ surrounds @s@ with @open@ and @close@
 -- (i.e. @open <> s <> close@).

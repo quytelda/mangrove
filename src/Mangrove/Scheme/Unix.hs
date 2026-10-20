@@ -219,7 +219,7 @@ parseUnixOption (T.stripPrefix "--" -> Just s)
       Nothing     -> pure (LongFlag s, Nothing)
 parseUnixOption (T.stripPrefix "-" >=> T.uncons -> Just (k,v))
   | k /= '-' =
-    pure (ShortFlag k, if T.null v then Nothing else Just v)
+    pure (ShortFlag k, munless (T.null v) $ Just v)
 parseUnixOption _ = empty
 
 -- | Does this text look like a flag? We check whether it starts with
@@ -357,12 +357,15 @@ instance Scheme UnixScheme where
 instance Render (UnixScheme r) where
   render (Parameter tp) = render $ parserHint tp
   render (Command info subtree) =
-    render (cmdHead info) <> " " <> render subtree
+    render (cmdHead info)
+    <> ( munless (nullary subtree)
+         $ " " <> render subtree
+       )
   render (Option info subtree) =
     render flag
-    <> if nullary subtree
-       then mempty
-       else separator <> renderDelimitedIf braces isChoice subtree
+    <> ( munless (nullary subtree)
+         $ separator <> renderDelimitedIf braces isChoice subtree
+       )
     where flag = optHead info
           separator = case flag of
                         LongFlag _ -> "="
@@ -571,9 +574,7 @@ renderTables m =
     gs -> "\nGLOBAL OPTIONS\n\n"
           <> mconcat gs
   <>
-  if all null (Map.keys m)
-  then mempty
-  else "\nSUBCOMMANDS\n"
+  munless (all null (Map.keys m)) "\nSUBCOMMANDS\n"
   <>
   Map.foldrWithKey
   (\cmds bs acc ->
