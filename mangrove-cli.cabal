@@ -61,7 +61,6 @@ test-suite mangrove-cli-test
   main-is: Main.hs
   other-modules:
       Arbitrary
-      General
       Mangrove.ParseTreeSpec
       Mangrove.StreamSpec
       Mangrove.Test.Stream
