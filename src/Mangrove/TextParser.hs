@@ -72,6 +72,12 @@ showsTextParser TextParser{parserHint = hint} =
   . showString (T.unpack hint)
   . showString ">"
 
+instance Usage TextParser where
+  usagePrec _ TextParser{parserHint=hint} =
+    if T.null hint
+    then "ARG"
+    else render hint
+
 -- | A more general function for running t'TextParser's.
 runTextParser :: MonadError Builder m => TextParser r -> Text -> m r
 runTextParser tp = liftEither . first TLB.fromText . parserRun tp
