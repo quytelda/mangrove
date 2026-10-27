@@ -354,24 +354,36 @@ instance Scheme UnixScheme where
       satiate subtree
       >>= resolveLifted
 
+prec_bind :: Int
+prec_bind = 12
+
+instance Usage UnixScheme where
+  usagePrec _ (Parameter tp) =
+    usage tp
+  usagePrec _ (RequestOption info _) =
+    render $ optHead info
+  usagePrec d (Option info subtree)
+    | nullary subtree = render flag
+    | otherwise =
+        bracesIf (d > prec_bind)
+        $ render flag
+        <> separator
+        <> usagePrec prec_prod subtree
+    where
+      flag = optHead info
+      separator = case flag of
+        LongFlag _ -> "="
+        _          -> ""
+  usagePrec d (Command info subtree) =
+    bracesIf (d > prec_bind)
+    $ render (cmdHead info) <> params
+    where
+      params =
+        munless (nullary subtree)
+        $ " " <> usagePrec prec_prod subtree
+
 instance Render (UnixScheme r) where
-  render (Parameter tp) = render $ parserHint tp
-  render (Command info subtree) =
-    render (cmdHead info)
-    <> ( munless (nullary subtree)
-         $ " " <> render subtree
-       )
-  render (Option info subtree) =
-    render flag
-    <> ( munless (nullary subtree)
-         $ separator <> renderDelimitedIf braces isChoice subtree
-       )
-    where flag = optHead info
-          separator = case flag of
-                        LongFlag _ -> "="
-                        _          -> ""
-  render (RequestOption info _) =
-    render (optHead info)
+  render = usage
 
 instance Render (Token UnixScheme) where
   render (UnixArgument s)                      = render s
@@ -485,7 +497,7 @@ decomposeTree tree _ = Usages (Just tree) []
 
 formatUsages :: Text -> Usages r -> Builder
 formatUsages progName =
-  foldMap (\t -> "  " <> render progName <> " " <> render t <> "\n")
+  foldMap (\tree -> "  " <> render progName <> " " <> usage tree <> "\n")
   . usagesToList
 
 --------------------------------------------------------------------------------
