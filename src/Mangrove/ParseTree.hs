@@ -27,6 +27,11 @@ module Mangrove.ParseTree
   , isSum
   , isOptional
   , isChoice
+
+    -- * Usage Precedences
+  , prec_prod
+  , prec_sum
+  , prec_list
   ) where
 
 import           Control.Applicative
@@ -196,3 +201,43 @@ instance (Valency s, HasTokens s, forall a. Render (s a)) => Render (ParseTree s
 
   -- Constant nodes that don't accept input have no usage.
   render _ = ""
+
+-- | Precedence values for different usage separators.
+prec_prod, prec_sum, prec_list :: Int
+prec_prod = 7
+prec_sum = 3
+prec_list = 14
+
+instance (Valency s, HasTokens s, Usage s) => Usage (ParseTree s) where
+  usagePrec _ (SumNode l (ValueNode _))
+    | nullary l = ""
+    | otherwise =
+      brackets $ usagePrec 0 l
+  usagePrec _ EmptyNode = ""
+  usagePrec _ (ValueNode _) = ""
+  usagePrec d (ParseNode p) =
+    usagePrec d p
+  usagePrec d (ProdNode _ l r)
+    | nullary l && nullary r = ""
+    | nullary l = usagePrec d r
+    | nullary r = usagePrec d l
+    | otherwise =
+      bracesIf (d > prec_prod || d == prec_sum)
+      $ usagePrec prec_prod l
+      <> render (delimiter (Proxy @s))
+      <> usagePrec prec_prod r
+  usagePrec d (SumNode l r)
+    | nullary l && nullary r = ""
+    | nullary l = usagePrec d r
+    | nullary r = usagePrec d l
+    | otherwise =
+      bracesIf (d > prec_sum || d == prec_prod)
+      $ usagePrec prec_sum l
+      <> "|"
+      <> usagePrec prec_sum r
+  usagePrec d (ManyNode required p)
+    | nullary p = ""
+    | not required || isOptional p =
+      brackets $ usagePrec prec_list p <> "..."
+    | otherwise =
+      bracesIf (d >= prec_list) $ usagePrec prec_list p <> "..."
