@@ -26,11 +26,18 @@ module Mangrove.Render
   , braces
   , quotes
   , renderDelimitedIf
+  , wrapIf
+  , bracesIf
+  , bracketsIf
+
+    -- * Usage
+  , Usage(..)
 
     -- * Re-exports
   , Builder
   ) where
 
+import           Data.Kind
 import           Data.Text              (Text)
 import qualified Data.Text              as T
 import qualified Data.Text.Lazy         as TL
@@ -95,9 +102,38 @@ braces = between "{" "}"
 quotes :: Builder -> Builder
 quotes = between "\"" "\""
 
+wrapIf :: (Builder -> Builder) -> Bool -> Builder -> Builder
+wrapIf wrap True  = wrap
+wrapIf _    False = id
+
+-- | Optionally wrap an expression with braces
+bracesIf :: Bool -> Builder -> Builder
+bracesIf = wrapIf braces
+
+-- | Optionally wrap an expression with brackets
+bracketsIf :: Bool -> Builder -> Builder
+bracketsIf = wrapIf brackets
+
 -- | @renderDelimitedIf wrap f x@ will render @x@ as a 'Builder'. If
 -- the condition @f x@ is @True@, the result will be modified using
 -- the function @wrap@, otherwise the result will be returned
 -- unmodified.
 renderDelimitedIf :: Render a => (Builder -> Builder) -> (a -> Bool) -> a -> Builder
 renderDelimitedIf wrap f x = (if f x then wrap else id) (render x)
+
+--------------------------------------------------------------------------------
+-- Usage
+
+-- | A class for parsers that support generation of usage information.
+class Usage (p :: Type -> Type) where
+
+  -- | Generate nicely formatted usage information for a parser. This
+  -- similar to 'showsPrec'.
+  usagePrec :: Int -> p r -> Builder
+  usagePrec _ = usage
+
+  -- | Generate nicely formatted usage information for a parser.
+  --
+  -- Default implementation is equivalent to @usagePrec 0@.
+  usage :: p r -> Builder
+  usage = usagePrec 0
