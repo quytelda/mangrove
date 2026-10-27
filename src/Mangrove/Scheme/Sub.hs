@@ -98,9 +98,12 @@ instance Scheme SubScheme where
           empty
       _ -> empty
 
+instance Usage SubScheme where
+  usagePrec _ (Parameter tp)  = usage tp
+  usagePrec _ (Option key tp) = render key <> "=" <> usage tp
+
 instance Render (SubScheme r) where
-  render (Parameter tp)  = render $ parserHint tp
-  render (Option key tp) = render key <> "=" <> render (parserHint tp)
+  render = usage
 
 instance Render (Token SubScheme) where
   render (SubAssoc key value) = render key <> "=" <> render value
